@@ -120,7 +120,7 @@ export function ModelsPage() {
           <select value={filter} onChange={(e) => setFilter(e.target.value)}>
             <option value="all">All sources</option>
             <option value="lmstudio">LM Studio</option>
-            <option value="unsloth">Unsloth</option>
+            <option value="huggingface">Hugging Face</option>
           </select>
           <select
             value={selectedDrive}

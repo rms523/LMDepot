@@ -6,15 +6,11 @@ use std::path::{Path, PathBuf};
 
 pub struct HuggingFaceCacheAdapter {
     path_override: Option<String>,
-    source_tag: String,
 }
 
 impl HuggingFaceCacheAdapter {
-    pub fn new(path_override: Option<String>, source_tag: &str) -> Self {
-        Self {
-            path_override,
-            source_tag: source_tag.to_string(),
-        }
+    pub fn new(path_override: Option<String>) -> Self {
+        Self { path_override }
     }
 
     pub fn resolve_hf_cache() -> AppResult<PathBuf> {
@@ -78,7 +74,7 @@ impl HuggingFaceCacheAdapter {
 
 impl SourceAdapter for HuggingFaceCacheAdapter {
     fn id(&self) -> &str {
-        &self.source_tag
+        "huggingface"
     }
 
     fn resolve_roots(&self) -> AppResult<Vec<PathBuf>> {
@@ -134,7 +130,7 @@ impl SourceAdapter for HuggingFaceCacheAdapter {
             models.push(ModelRecord {
                 id,
                 display_name,
-                source: self.source_tag.clone(),
+                source: "huggingface".to_string(),
                 primary_path: snapshot.to_string_lossy().to_string(),
                 total_bytes,
                 file_count,

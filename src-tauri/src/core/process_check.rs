@@ -3,12 +3,13 @@ use crate::types::RunningAppsCheck;
 use std::process::Command;
 
 const LM_STUDIO_NAMES: &[&str] = &["LM Studio", "lm-studio", "LMStudio"];
-const UNSLOTH_NAMES: &[&str] = &["unsloth", "Unsloth", "Unsloth Studio"];
+/// Apps that may hold locks on the Hugging Face Hub cache directory.
+const HF_CACHE_APP_NAMES: &[&str] = &["unsloth", "Unsloth", "Unsloth Studio", "huggingface-cli"];
 
 pub fn check_running_apps() -> RunningAppsCheck {
     RunningAppsCheck {
         lmstudio_running: is_process_running(LM_STUDIO_NAMES),
-        unsloth_running: is_process_running(UNSLOTH_NAMES),
+        huggingface_running: is_process_running(HF_CACHE_APP_NAMES),
     }
 }
 
@@ -39,13 +40,13 @@ pub fn validate_apps_not_running(warn: bool) -> AppResult<()> {
         return Ok(());
     }
     let check = check_running_apps();
-    if check.lmstudio_running || check.unsloth_running {
+    if check.lmstudio_running || check.huggingface_running {
         let mut apps = Vec::new();
         if check.lmstudio_running {
             apps.push("LM Studio");
         }
-        if check.unsloth_running {
-            apps.push("Unsloth");
+        if check.huggingface_running {
+            apps.push("Hugging Face");
         }
         return Err(AppError::msg(format!(
             "{} is running. Close it before destructive operations or disable the warning in Settings.",

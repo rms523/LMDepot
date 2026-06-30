@@ -55,7 +55,7 @@ export interface DashboardStats {
   drive_count: number;
   mounted_drives: number;
   lmstudio_bytes: number;
-  unsloth_bytes: number;
+  huggingface_bytes: number;
 }
 
 export interface JobRecord {
@@ -94,5 +94,5 @@ export interface AppSettings {
 
 export interface RunningAppsCheck {
   lmstudio_running: boolean;
-  unsloth_running: boolean;
+  huggingface_running: boolean;
 }

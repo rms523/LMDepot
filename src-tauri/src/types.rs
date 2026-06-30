@@ -57,7 +57,7 @@ pub struct DashboardStats {
     pub drive_count: u32,
     pub mounted_drives: u32,
     pub lmstudio_bytes: u64,
-    pub unsloth_bytes: u64,
+    pub huggingface_bytes: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,7 +137,7 @@ impl Default for AppSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunningAppsCheck {
     pub lmstudio_running: bool,
-    pub unsloth_running: bool,
+    pub huggingface_running: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

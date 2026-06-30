@@ -221,6 +221,7 @@ button.small {
   background: #2a3f5f;
 }
 
+.badge.source-huggingface,
 .badge.source-unsloth {
   background: #3f2a5f;
 }

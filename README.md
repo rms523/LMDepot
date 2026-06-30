@@ -1,10 +1,10 @@
 # Model Backup
 
-Cross-platform desktop app for backing up AI models from **LM Studio** and **Unsloth** (Hugging Face Hub cache) to one or more external drives.
+Cross-platform desktop app for backing up AI models from **LM Studio** and the **Hugging Face Hub cache** to one or more external drives.
 
 ## Features
 
-- **Discover models** from LM Studio (`~/.lmstudio`, `~/.cache/lm-studio`, or `.lmstudio-home-pointer`) and Unsloth via HF cache (`~/.cache/huggingface/hub`)
+- **Discover models** from LM Studio (`~/.lmstudio`, `~/.cache/lm-studio`, or `.lmstudio-home-pointer`) and the Hugging Face Hub cache (`~/.cache/huggingface/hub`, or `HF_HUB_CACHE` / `HF_HOME`)
 - **Register multiple backup drives** (external SSDs, NAS mounts, etc.)
 - **Backup** — full copy to a selected drive with `model.manifest.json`
 - **Sync** — copy only missing or changed files (size + mtime comparison)
@@ -52,7 +52,7 @@ cd src-tauri && cargo test
 | Source | Default location |
 |--------|------------------|
 | LM Studio | `~/.lmstudio/models` or `~/.cache/lm-studio/models` (see `~/.lmstudio-home-pointer`) |
-| Unsloth / HF | `~/.cache/huggingface/hub` (or `HF_HUB_CACHE` / `HF_HOME`) |
+| Hugging Face | `~/.cache/huggingface/hub` (or `HF_HUB_CACHE` / `HF_HOME`) |
 
 Override paths in **Settings** if you relocated caches.
 
@@ -71,21 +71,23 @@ On **Backup Drives**, each registered drive has its own **Backup all** / **Sync 
       model.manifest.json
       ...
   hf/
-    unsloth/Model-Name/
+    org/Model-Name/
       model.manifest.json
       ...
 ```
 
+Models from any HF Hub cache repo are discovered (e.g. `unsloth/...`, `meta-llama/...`).
+
 ## Safety notes
 
-- Close **LM Studio** and **Unsloth** before delete/offload operations (configurable in Settings).
+- Close **LM Studio** and **Hugging Face tools** (e.g. Unsloth, `huggingface-cli`) before delete/offload operations (configurable in Settings).
 - HF cache backups copy whole snapshot directories as real files — do not manually edit HF blob stores.
 - On Windows, offload uses directory junctions; enable Developer Mode or run as admin if junction creation fails.
 - Unplugging a drive during a job fails cleanly; re-run sync after remounting.
 
 ## Roadmap (v2)
 
-- OMLX, Ollama, standalone Hugging Face source
+- OMLX, Ollama, direct HF API download (bypass cache)
 - Custom folder watches
 - Auto-sync on drive mount
 - Optional cloud export via rclone/restic

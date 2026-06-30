@@ -22,6 +22,10 @@ impl Database {
         let db_path = app_data_dir.join("model-backup.db");
         let conn = Connection::open(db_path)?;
         conn.execute_batch(schema_embed::SCHEMA)?;
+        conn.execute(
+            "UPDATE models SET source = 'huggingface' WHERE source = 'unsloth'",
+            [],
+        )?;
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
         })
@@ -405,8 +409,8 @@ impl Database {
             [],
             |r| r.get(0),
         )?;
-        let unsloth_bytes: u64 = conn.query_row(
-            "SELECT COALESCE(SUM(total_bytes), 0) FROM models WHERE source = 'unsloth'",
+        let huggingface_bytes: u64 = conn.query_row(
+            "SELECT COALESCE(SUM(total_bytes), 0) FROM models WHERE source IN ('huggingface', 'unsloth')",
             [],
             |r| r.get(0),
         )?;
@@ -430,7 +434,7 @@ impl Database {
             drive_count,
             mounted_drives: 0,
             lmstudio_bytes,
-            unsloth_bytes,
+            huggingface_bytes,
         })
     }
 }

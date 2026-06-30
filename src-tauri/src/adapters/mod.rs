@@ -23,7 +23,7 @@ impl AdapterRegistry {
         Self {
             adapters: vec![
                 Box::new(LmStudioAdapter::new(lmstudio_override)),
-                Box::new(HuggingFaceCacheAdapter::new(hf_cache_override, "unsloth")),
+                Box::new(HuggingFaceCacheAdapter::new(hf_cache_override)),
             ],
         }
     }

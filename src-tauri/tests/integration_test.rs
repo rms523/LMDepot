@@ -78,8 +78,9 @@ fn hf_cache_adapter_finds_repo() {
     fs::create_dir_all(&snapshot).unwrap();
     fs::write(snapshot.join("model.safetensors"), b"data").unwrap();
 
-    let adapter = HuggingFaceCacheAdapter::new(Some(tmp.path().to_string_lossy().to_string()), "unsloth");
+    let adapter = HuggingFaceCacheAdapter::new(Some(tmp.path().to_string_lossy().to_string()));
     let found = adapter.scan().unwrap();
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].display_name, "demo/Test-Model");
+    assert_eq!(found[0].source, "huggingface");
 }

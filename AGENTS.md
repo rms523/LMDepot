@@ -4,7 +4,7 @@ Guidance for AI agents working in this repository.
 
 ## Project summary
 
-Cross-platform **Tauri 2** desktop app that discovers AI models from **LM Studio** and **Unsloth** (via Hugging Face Hub cache), backs them up to external drives, and supports sync, restore, delete, and offload operations.
+Cross-platform **Tauri 2** desktop app that discovers AI models from **LM Studio** and the **Hugging Face Hub cache**, backs them up to external drives, and supports sync, restore, delete, and offload operations.
 
 ## Architecture
 
@@ -27,7 +27,7 @@ src-tauri/src/
 - **Rust backend owns all file I/O** — UI calls Tauri `invoke` commands only; never copy/delete files from the frontend.
 - **Long operations run as background jobs** — spawn a thread, emit `job-progress` events, persist status in `jobs` table.
 - **Adapter pattern** for new model sources — implement `SourceAdapter` in `adapters/`, register in `AdapterRegistry`.
-- **Model identity** — logical models are directories (LM Studio) or HF cache repo snapshots (Unsloth); IDs like `lmstudio:author/model` or `hf:org/repo`.
+- **Model identity** — logical models are directories (LM Studio) or HF cache repo snapshots; IDs like `lmstudio:author/model` or `hf:org/repo`. Source tags: `lmstudio`, `huggingface`.
 - **Backup layout** on drives: `{drive_root}/lmstudio/...` or `{drive_root}/hf/...` plus `model.manifest.json` per model.
 - **Offload** = copy to drive + remove source + symlink/junction at original path (Unix symlink, Windows junction).
 
@@ -53,11 +53,11 @@ npm run build              # frontend only
 ## Default paths
 
 - LM Studio: `~/.lmstudio-home-pointer` → home, else `~/.lmstudio` or `~/.cache/lm-studio`; models under `{home}/models/`
-- Unsloth/HF: `HF_HUB_CACHE` → `HF_HOME/hub` → `~/.cache/huggingface/hub`
+- Hugging Face: `HF_HUB_CACHE` → `HF_HOME/hub` → `~/.cache/huggingface/hub` (scans all repos in cache; Unsloth and other tools share this directory)
 
 ## Safety rules (do not bypass)
 
-- Destructive ops check if LM Studio/Unsloth is running when `warn_if_app_running` is enabled.
+- Destructive ops check if LM Studio or Hugging Face cache tools are running when `warn_if_app_running` is enabled (includes Unsloth, `huggingface-cli`).
 - Never edit HF blob store internals — operate on whole snapshot directories.
 - Verify drive is mounted before backup/sync/offload.
 - Bulk ops (`backup_all`, `sync_all`) process models sequentially in one job; partial failure is reported in job message.
@@ -76,4 +76,4 @@ npm run build              # frontend only
 
 ## Out of scope (v2 roadmap)
 
-OMLX, Ollama, standalone HF UI, custom folder watches, auto-sync on mount, cloud export.
+OMLX, Ollama, direct HF API download, custom folder watches, auto-sync on mount, cloud export.

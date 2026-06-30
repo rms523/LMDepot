@@ -49,7 +49,7 @@ export function SettingsPage() {
           />
         </label>
         <label>
-          Hugging Face cache override (Unsloth)
+          Hugging Face cache override
           <input
             value={settings.hf_cache_path_override ?? ""}
             onChange={(e) =>
@@ -78,7 +78,7 @@ export function SettingsPage() {
               setSettings({ ...settings, warn_if_app_running: e.target.checked })
             }
           />
-          Block destructive operations when LM Studio or Unsloth is running
+          Block destructive operations when LM Studio or Hugging Face tools are running
         </label>
       </section>
 
@@ -89,7 +89,7 @@ export function SettingsPage() {
             LM Studio: {apps.lmstudio_running ? "Running" : "Not running"}
           </div>
           <div>
-            Unsloth: {apps.unsloth_running ? "Running" : "Not running"}
+            Hugging Face: {apps.huggingface_running ? "Running" : "Not running"}
           </div>
         </section>
       )}

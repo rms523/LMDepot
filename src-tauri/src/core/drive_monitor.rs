@@ -24,7 +24,7 @@ pub fn count_mounted(drives: &[BackupDrive]) -> u32 {
 pub fn backup_layout_path(drive_root: &Path, model: &ModelRecord) -> PathBuf {
     let source_dir = match model.source.as_str() {
         "lmstudio" => "lmstudio",
-        "unsloth" => "hf",
+        "huggingface" | "unsloth" => "hf", // unsloth: legacy source tag
         _ => "other",
     };
     let name = model.display_name.replace('\\', "/").replace(':', "_");

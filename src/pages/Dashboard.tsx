@@ -43,7 +43,7 @@ export function Dashboard() {
           <strong>LM Studio:</strong> {formatBytes(stats.lmstudio_bytes)}
         </div>
         <div className="stat-inline">
-          <strong>Unsloth (HF cache):</strong> {formatBytes(stats.unsloth_bytes)}
+          <strong>Hugging Face:</strong> {formatBytes(stats.huggingface_bytes)}
         </div>
       </div>
     </div>
