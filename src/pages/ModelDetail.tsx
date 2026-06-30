@@ -120,9 +120,17 @@ export function ModelDetail({ model, drives, onBack, onModelUpdated }: Props) {
 
       {!sourcePresent && !isOffloaded && (
         <div className="notice-banner">
-          Local copy removed. Files remain on your backup drive — use{" "}
-          <strong>Restore from backup</strong> to copy them back to{" "}
-          <code>{detail.primary_path}</code>.
+          {detail.backups.length > 0 ? (
+            <>
+              Local copy not present. Files are on your backup drive — use{" "}
+              <strong>Restore from backup</strong> to copy them to{" "}
+              <code>{detail.primary_path}</code>.
+            </>
+          ) : (
+            <>
+              Local copy not present. Import from a backup drive first, then restore.
+            </>
+          )}
         </div>
       )}
 

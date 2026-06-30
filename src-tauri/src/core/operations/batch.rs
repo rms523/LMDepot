@@ -1,4 +1,4 @@
-use super::{backup, sync, JobContext};
+use super::{backup, restore, sync, JobContext};
 use crate::error::{AppError, AppResult};
 use crate::types::JobRecord;
 use chrono::Utc;
@@ -83,6 +83,112 @@ pub fn backup_all(ctx: &JobContext, job_id: &str, drive_id: &str) -> AppResult<(
         )
     } else {
         format!("All backups failed: {}", errors.first().unwrap_or(&String::new()))
+    };
+
+    ctx.finish_job(&mut job, errors.len() < models.len(), &msg)?;
+    if completed == 0 && !errors.is_empty() {
+        return Err(AppError::msg(msg));
+    }
+    Ok(())
+}
+
+pub fn restore_all(ctx: &JobContext, job_id: &str, drive_id: &str) -> AppResult<()> {
+    let models: Vec<_> = ctx
+        .db
+        .list_models(None)?
+        .into_iter()
+        .filter(|m| {
+            !m.source_present
+                && !m.is_offloaded
+                && m.backups.iter().any(|b| {
+                    b.drive_id == drive_id && b.status != "missing" && b.backup_path.is_some()
+                })
+        })
+        .collect();
+
+    if models.is_empty() {
+        return Err(AppError::msg(
+            "No imported models to restore on this drive (import from backup first)",
+        ));
+    }
+
+    let total_bytes: u64 = models.iter().map(|m| m.model.total_bytes).sum();
+    let mut job = JobRecord {
+        id: job_id.to_string(),
+        job_type: "restore_all".to_string(),
+        status: "running".to_string(),
+        model_id: None,
+        drive_id: Some(drive_id.to_string()),
+        progress_pct: 0.0,
+        bytes_done: 0,
+        bytes_total: total_bytes,
+        current_file: None,
+        message: Some(format!("Restoring {} models...", models.len())),
+        created_at: Utc::now().to_rfc3339(),
+        finished_at: None,
+    };
+    ctx.db.create_job(&job)?;
+
+    let mut completed = 0u32;
+    let mut bytes_before = 0u64;
+    let mut errors: Vec<String> = Vec::new();
+
+    for (index, entry) in models.iter().enumerate() {
+        if ctx.check_cancelled().is_err() {
+            break;
+        }
+        let model = &entry.model;
+        job.model_id = Some(model.id.clone());
+        job.message = Some(format!(
+            "Restoring {}/{}: {}",
+            index + 1,
+            models.len(),
+            model.display_name
+        ));
+        ctx.db.update_job(&job)?;
+        ctx.emit_progress(&job, "running");
+
+        let sub_job_id = format!("{job_id}-{}", model.id);
+        match restore::run(&ctx, &sub_job_id, &model.id, drive_id, None) {
+            Ok(()) => {
+                completed += 1;
+                bytes_before += model.total_bytes;
+                job.bytes_done = bytes_before;
+                job.progress_pct = if total_bytes > 0 {
+                    (bytes_before as f64 / total_bytes as f64) * 100.0
+                } else {
+                    ((index + 1) as f64 / models.len() as f64) * 100.0
+                };
+                ctx.db.update_job(&job)?;
+                ctx.emit_progress(&job, "running");
+            }
+            Err(e) => errors.push(format!("{}: {}", model.display_name, e)),
+        }
+    }
+
+    if ctx.cancelled.load(Ordering::Relaxed) {
+        let msg = if completed > 0 {
+            format!("Cancelled after restoring {completed} models")
+        } else {
+            "Restore cancelled".to_string()
+        };
+        ctx.finish_job(&mut job, false, &msg)?;
+        return Err(AppError::msg("Job cancelled"));
+    }
+
+    let msg = if errors.is_empty() {
+        format!("Restored {completed} models")
+    } else if completed > 0 {
+        format!(
+            "Restored {completed}/{} models. {} failed.",
+            models.len(),
+            errors.len()
+        )
+    } else {
+        format!(
+            "All restores failed: {}",
+            errors.first().unwrap_or(&String::new())
+        )
     };
 
     ctx.finish_job(&mut job, errors.len() < models.len(), &msg)?;

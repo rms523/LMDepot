@@ -6,6 +6,7 @@ const MODEL_JOB_TYPES = new Set([
   "backup_all",
   "sync_all",
   "restore",
+  "restore_all",
   "offload",
   "reverse_offload",
 ]);

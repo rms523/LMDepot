@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   formatDate,
+  importFromBackupDrive,
   listBackupDrives,
   listJobs,
   listModels,
@@ -32,6 +33,7 @@ export function ModelsPage() {
   const [selectedDrive, setSelectedDrive] = useState("");
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [selected, setSelected] = useState<ModelWithBackups | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +147,26 @@ export function ModelsPage() {
     }
   };
 
+  const handleImportFromBackups = async () => {
+    if (mountedDrives.length === 0) {
+      setError("Add and mount a backup drive first");
+      return;
+    }
+    setImporting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const driveId = selectedDrive || undefined;
+      const result = await importFromBackupDrive(driveId);
+      await load();
+      setSuccess(result.message);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const runBulk = async (action: "backup" | "sync") => {
     if (!selectedDrive) {
       setError("Select a backup drive first");
@@ -240,8 +262,19 @@ export function ModelsPage() {
             onClick={() => runBulk("sync")}
           />
           <ActionButtonWithHint
-            label={scanning ? "Scanning..." : "Rescan"}
-            hint="Scans local provider folders only (LM Studio, Hugging Face, oMLX, Ollama, Jan) and refreshes the model list. Does not scan backup drives."
+            label={importing ? "Importing..." : "Import from backups"}
+            buttonClassName="secondary"
+            hint={
+              selectedDrive
+                ? "Scans the selected backup drive for model.manifest.json files and adds them to this list so you can restore on a new machine."
+                : "Scans all mounted backup drives for model.manifest.json files and adds them to this list."
+            }
+            disabled={importing || mountedDrives.length === 0}
+            onClick={handleImportFromBackups}
+          />
+          <ActionButtonWithHint
+            label={scanning ? "Scanning..." : "Rescan local"}
+            hint="Scans local provider folders only (LM Studio, Hugging Face, oMLX, Ollama, Jan) and refreshes the model list."
             disabled={scanning}
             onClick={handleRescan}
           />
@@ -254,7 +287,15 @@ export function ModelsPage() {
         <div className="loading">Loading models...</div>
       ) : filtered.length === 0 ? (
         <div className="empty">
-          No models found. Click Rescan to discover models from LM Studio and Unsloth.
+          <p>No models found.</p>
+          <p className="muted">
+            On a new computer with an external backup drive: go to <strong>Backup Drives</strong>,
+            register the drive, click <strong>Import</strong>, then <strong>Restore all</strong>.
+            Or use <strong>Import from backups</strong> above after selecting a drive.
+          </p>
+          <p className="muted">
+            For models already on this machine, click <strong>Rescan local</strong>.
+          </p>
         </div>
       ) : (
         <table className="data-table">

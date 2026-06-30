@@ -171,6 +171,18 @@ pub struct BackupManifest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImportFromDriveResult {
+    pub drive_id: String,
+    pub imported_count: u32,
+    pub linked_count: u32,
+    pub skipped_count: u32,
+    pub error_count: u32,
+    pub errors: Vec<String>,
+    pub message: String,
+    pub models: Vec<ModelWithBackups>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ManifestFileEntry {
     pub relative_path: String,
     pub size: u64,

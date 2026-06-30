@@ -37,6 +37,7 @@ src-tauri/src/
 |------|-----------------|
 | New model source (v2) | `src-tauri/src/adapters/` + `AdapterRegistry` |
 | New operation | `src-tauri/src/core/operations/` + Tauri command in `lib.rs` + `src/api/client.ts` |
+| Import from backup drive | `src-tauri/src/core/backup_import.rs` + `import_from_backup_drive` in `lib.rs` |
 | UI page | `src/pages/` + route in `src/App.tsx` |
 | Settings | `types.rs` `AppSettings`, `db/mod.rs`, `src/pages/Settings.tsx` |
 
@@ -60,7 +61,7 @@ npm run build              # frontend only
 - Destructive ops check if LM Studio or Hugging Face cache tools are running when `warn_if_app_running` is enabled (includes Unsloth, `huggingface-cli`).
 - Never edit HF blob store internals — operate on whole snapshot directories.
 - Verify drive is mounted before backup/sync/offload.
-- Bulk ops (`backup_all`, `sync_all`) process models sequentially in one job; partial failure is reported in job message.
+- Bulk ops (`backup_all`, `sync_all`, `restore_all`) process models sequentially in one job; partial failure is reported in job message.
 
 ## UI patterns
 

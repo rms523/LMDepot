@@ -3,11 +3,14 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   addBackupDrive,
   formatDate,
+  importFromBackupDrive,
   listBackupDrives,
   removeBackupDrive,
   startBackupAll,
+  startRestoreAll,
   startSyncAll,
 } from "../api/client";
+import { ActionButtonWithHint } from "../components/ActionButtonWithHint";
 import { StatusBadge } from "../components/Badges";
 import type { BackupDrive } from "../types";
 
@@ -20,6 +23,7 @@ export function DrivesPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,7 +77,7 @@ export function DrivesPage() {
     }
   };
 
-  const runBulk = async (action: "backup" | "sync", drive: BackupDrive) => {
+  const runBulk = async (action: "backup" | "sync" | "restore", drive: BackupDrive) => {
     if (!drive.is_mounted) {
       setError(`Drive "${drive.label}" is not mounted`);
       return;
@@ -85,9 +89,13 @@ export function DrivesPage() {
       const jobId =
         action === "backup"
           ? await startBackupAll(drive.id)
-          : await startSyncAll(drive.id);
+          : action === "sync"
+            ? await startSyncAll(drive.id)
+            : await startRestoreAll(drive.id);
+      const label =
+        action === "backup" ? "Backup" : action === "sync" ? "Sync" : "Restore";
       setSuccess(
-        `${action === "backup" ? "Backup" : "Sync"} all started — check Jobs tab (${jobId.slice(0, 8)}...)`
+        `${label} all started — check Jobs tab (${jobId.slice(0, 8)}...)`
       );
     } catch (e) {
       setError(String(e));
@@ -96,12 +104,35 @@ export function DrivesPage() {
     }
   };
 
+  const runImport = async (drive: BackupDrive) => {
+    if (!drive.is_mounted) {
+      setError(`Drive "${drive.label}" is not mounted`);
+      return;
+    }
+    setImportBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await importFromBackupDrive(drive.id);
+      let message = result.message;
+      if (result.error_count > 0) {
+        message += ` (${result.error_count} error(s))`;
+      }
+      setSuccess(message);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
   return (
     <div className="page">
       <h2>Backup Drives</h2>
       <p className="muted">
-        Register external drives or folders where model backups are stored. You can register
-        multiple drives.
+        Register external drives or folders where model backups are stored. On a new computer,
+        add your drive and use <strong>Import from drive</strong> to discover backups, then{" "}
+        <strong>Restore all</strong> to copy them into local LM Studio / Hugging Face folders.
       </p>
 
       <section className="section">
@@ -188,16 +219,31 @@ export function DrivesPage() {
                   <td className="muted">{formatDate(d.last_seen_at)}</td>
                   <td>
                     <div className="row-actions">
+                      <ActionButtonWithHint
+                        label="Import"
+                        buttonClassName="small"
+                        hint="Scans this drive for model.manifest.json files and registers backups in the Models list (for new machines or drives created on another computer)."
+                        disabled={!d.is_mounted || importBusy || bulkBusy}
+                        onClick={() => runImport(d)}
+                      />
                       <button
                         className="small"
-                        disabled={!d.is_mounted || bulkBusy}
+                        disabled={!d.is_mounted || bulkBusy || importBusy}
+                        onClick={() => runBulk("restore", d)}
+                        title="Restore all imported models from this drive to local folders"
+                      >
+                        Restore all
+                      </button>
+                      <button
+                        className="small"
+                        disabled={!d.is_mounted || bulkBusy || importBusy}
                         onClick={() => runBulk("backup", d)}
                       >
                         Backup all
                       </button>
                       <button
                         className="small secondary"
-                        disabled={!d.is_mounted || bulkBusy}
+                        disabled={!d.is_mounted || bulkBusy || importBusy}
                         onClick={() => runBulk("sync", d)}
                       >
                         Sync all

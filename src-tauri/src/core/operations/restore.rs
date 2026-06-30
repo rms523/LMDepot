@@ -5,6 +5,46 @@ use crate::error::{AppError, AppResult};
 use std::path::Path;
 use uuid::Uuid;
 
+/// Hugging Face Hub tools resolve snapshots via `refs/main` (or other ref files).
+fn ensure_hf_snapshot_refs(dest: &Path) {
+    let snapshots_dir = dest.parent();
+    let repo_dir = snapshots_dir.and_then(|p| p.parent());
+    let Some(snapshots_dir) = snapshots_dir else {
+        return;
+    };
+    if snapshots_dir.file_name().and_then(|n| n.to_str()) != Some("snapshots") {
+        return;
+    }
+    let Some(repo_dir) = repo_dir else {
+        return;
+    };
+    if !repo_dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.starts_with("models--"))
+        .unwrap_or(false)
+    {
+        return;
+    }
+
+    let revision = dest
+        .file_name()
+        .and_then(|n| n.to_str())
+        .filter(|s| !s.is_empty());
+    let Some(revision) = revision else {
+        return;
+    };
+
+    let refs_main = repo_dir.join("refs").join("main");
+    if refs_main.exists() {
+        return;
+    }
+    if std::fs::create_dir_all(refs_main.parent().unwrap()).is_err() {
+        return;
+    }
+    let _ = std::fs::write(&refs_main, format!("{revision}\n"));
+}
+
 pub fn run(
     ctx: &JobContext,
     job_id: &str,
@@ -46,6 +86,7 @@ pub fn run(
         std::fs::create_dir_all(dest)?;
 
         run_copy_with_job(ctx, &mut job, source, dest, &model.files)?;
+        ensure_hf_snapshot_refs(dest);
 
         ctx.db.upsert_model_backup(
             &Uuid::new_v4().to_string(),

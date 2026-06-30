@@ -112,3 +112,14 @@ export interface RunningAppsCheck {
   ollama_running: boolean;
   jan_running: boolean;
 }
+
+export interface ImportFromDriveResult {
+  drive_id: string;
+  imported_count: number;
+  linked_count: number;
+  skipped_count: number;
+  error_count: number;
+  errors: string[];
+  message: string;
+  models: ModelWithBackups[];
+}

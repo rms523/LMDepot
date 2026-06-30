@@ -5,6 +5,7 @@ import type {
   BackupDrive,
   DashboardStats,
   DeleteScope,
+  ImportFromDriveResult,
   JobProgressEvent,
   JobRecord,
   ModelWithBackups,
@@ -53,6 +54,16 @@ export async function addBackupDrive(
 
 export async function removeBackupDrive(driveId: string): Promise<void> {
   return invoke("remove_backup_drive", { driveId });
+}
+
+export async function importFromBackupDrive(
+  driveId?: string
+): Promise<ImportFromDriveResult> {
+  return invoke("import_from_backup_drive", { driveId: driveId ?? null });
+}
+
+export async function startRestoreAll(driveId: string): Promise<string> {
+  return invoke("start_restore_all", { driveId });
 }
 
 export async function listJobs(limit = 50): Promise<JobRecord[]> {

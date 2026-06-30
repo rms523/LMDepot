@@ -10,6 +10,8 @@ Cross-platform desktop app for backing up AI models from **LM Studio** and the *
 - **Sync** — copy only missing or changed files (size + mtime comparison)
 - **Backup all / Sync all** — batch backup or sync every discovered model to a chosen drive (one job, sequential)
 - **Restore** — copy from backup back to the original or a custom path
+- **Import from backup drive** — scan external drives for `model.manifest.json` and register models (for new machines)
+- **Restore all** — batch restore imported models from a drive to local folders
 - **Delete** — remove from source only, backup only, or both (with confirmation)
 - **Offload** — move model to external drive and leave a symlink/junction at the original path so apps keep working
 - **Job progress** — background operations with live progress in the Jobs tab
@@ -60,7 +62,17 @@ Override paths in **Settings** if you relocated caches.
 
 On the **Models** page, pick a target drive from the dropdown and use **Backup all** or **Sync all** to process every discovered model in one background job.
 
-On **Backup Drives**, each registered drive has its own **Backup all** / **Sync all** buttons. Progress appears in the **Jobs** tab.
+On **Backup Drives**, each registered drive has **Import**, **Restore all**, **Backup all**, and **Sync all**. Progress appears in the **Jobs** tab.
+
+## Restore on a new computer
+
+1. Install Model Backup and connect your external drive.
+2. Open **Backup Drives** → **Add drive** → set the root path to the folder that contains `lmstudio/` and `hf/` (see layout below).
+3. Click **Import** on that drive — models appear on the **Models** tab with status *source missing*.
+4. Click **Restore all** (or restore individual models) to copy files into local LM Studio / Hugging Face folders.
+5. Open LM Studio or your HF tool — models should be available at the restored paths.
+
+Override local paths in **Settings** if your caches are not in the default locations.
 
 ## Backup layout on external drives
 

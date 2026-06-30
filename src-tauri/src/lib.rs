@@ -4,6 +4,7 @@ pub mod db;
 pub mod error;
 pub mod types;
 
+use core::backup_import::{import_from_all_mounted_drives, import_from_drive};
 use core::drive_monitor::{count_mounted, enrich_drives, volume_id_for_path};
 use core::operations::{backup, batch, delete, offload, restore, sync, JobContext};
 use core::process_check::check_running_apps;
@@ -110,6 +111,17 @@ fn add_backup_drive(
 #[tauri::command]
 fn remove_backup_drive(state: State<AppState>, drive_id: String) -> AppResult<()> {
     state.db.remove_backup_drive(&drive_id)
+}
+
+#[tauri::command]
+fn import_from_backup_drive(
+    state: State<AppState>,
+    drive_id: Option<String>,
+) -> AppResult<ImportFromDriveResult> {
+    match drive_id {
+        Some(id) => import_from_drive(&state.db, &id),
+        None => import_from_all_mounted_drives(&state.db),
+    }
 }
 
 #[tauri::command]
@@ -296,6 +308,21 @@ fn start_sync_all(
 }
 
 #[tauri::command]
+fn start_restore_all(
+    state: State<AppState>,
+    app: AppHandle,
+    drive_id: String,
+) -> AppResult<String> {
+    let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
+    let did = drive_id.clone();
+    spawn_job(&state, app, job_id.clone(), move |ctx| {
+        batch::restore_all(&ctx, &jid, &did)
+    });
+    Ok(job_id)
+}
+
+#[tauri::command]
 fn cancel_job(state: State<AppState>, app: AppHandle, job_id: String) -> AppResult<()> {
     if let Some(flag) = state.cancel_flags.lock().unwrap().get(&job_id) {
         flag.store(true, Ordering::Relaxed);
@@ -367,12 +394,14 @@ pub fn run() {
             list_backup_drives,
             add_backup_drive,
             remove_backup_drive,
+            import_from_backup_drive,
             list_jobs,
             get_job,
             start_backup,
             start_sync,
             start_backup_all,
             start_sync_all,
+            start_restore_all,
             start_restore,
             start_delete,
             start_offload,
