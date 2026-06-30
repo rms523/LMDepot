@@ -32,6 +32,7 @@ pub fn backup_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
 
     for (index, entry) in models.iter().enumerate() {
         let model = &entry.model;
+        job.model_id = Some(model.id.clone());
         job.message = Some(format!(
             "Backing up {}/{}: {}",
             index + 1,
@@ -52,6 +53,7 @@ pub fn backup_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
                     ((index + 1) as f64 / models.len() as f64) * 100.0
                 };
                 ctx.db.update_job(&job)?;
+                ctx.emit_progress(&job, "running");
             }
             Err(e) => errors.push(format!("{}: {}", model.display_name, e)),
         }
@@ -105,6 +107,7 @@ pub fn sync_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
 
     for (index, entry) in models.iter().enumerate() {
         let model = &entry.model;
+        job.model_id = Some(model.id.clone());
         job.message = Some(format!(
             "Syncing {}/{}: {}",
             index + 1,
@@ -125,6 +128,7 @@ pub fn sync_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
                     ((index + 1) as f64 / models.len() as f64) * 100.0
                 };
                 ctx.db.update_job(&job)?;
+                ctx.emit_progress(&job, "running");
             }
             Err(e) => errors.push(format!("{}: {}", model.display_name, e)),
         }

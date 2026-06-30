@@ -78,6 +78,8 @@ export interface JobRecord {
 
 export interface JobProgressEvent {
   job_id: string;
+  job_type?: string | null;
+  model_id?: string | null;
   progress_pct: number;
   bytes_done: number;
   bytes_total: number;

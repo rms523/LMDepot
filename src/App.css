@@ -259,6 +259,26 @@ button.small {
   color: var(--accent);
 }
 
+.badge.status-in_progress {
+  background: #1a3a5c;
+  color: var(--accent);
+  animation: pulse-badge 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.progress-hint {
+  font-size: 0.8rem;
+}
+
 .badge.status-completed {
   background: #1b4332;
   color: var(--success);

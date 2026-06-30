@@ -37,5 +37,9 @@ export function SourceBadge({ source }: { source: string }) {
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge status-${status}`}>{status.replace("_", " ")}</span>;
+  const label =
+    status === "in_progress"
+      ? "in progress"
+      : status.replace(/_/g, " ");
+  return <span className={`badge status-${status}`}>{label}</span>;
 }

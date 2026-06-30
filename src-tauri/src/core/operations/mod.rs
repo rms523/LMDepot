@@ -28,6 +28,8 @@ impl JobContext {
     pub fn emit_progress(&self, job: &JobRecord, status: &str) {
         let event = JobProgressEvent {
             job_id: job.id.clone(),
+            job_type: Some(job.job_type.clone()),
+            model_id: job.model_id.clone(),
             progress_pct: job.progress_pct,
             bytes_done: job.bytes_done,
             bytes_total: job.bytes_total,

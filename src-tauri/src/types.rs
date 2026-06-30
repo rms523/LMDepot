@@ -102,6 +102,8 @@ pub struct JobRecord {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobProgressEvent {
     pub job_id: String,
+    pub job_type: Option<String>,
+    pub model_id: Option<String>,
     pub progress_pct: f64,
     pub bytes_done: u64,
     pub bytes_total: u64,
