@@ -25,6 +25,9 @@ pub fn backup_layout_path(drive_root: &Path, model: &ModelRecord) -> PathBuf {
     let source_dir = match model.source.as_str() {
         "lmstudio" => "lmstudio",
         "huggingface" | "unsloth" => "hf", // unsloth: legacy source tag
+        "omlx" => "omlx",
+        "ollama" => "ollama",
+        "jan" => "jan",
         _ => "other",
     };
     let name = model.display_name.replace('\\', "/").replace(':', "_");

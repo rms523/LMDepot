@@ -1,5 +1,6 @@
 use model_backup_lib::adapters::huggingface_cache::HuggingFaceCacheAdapter;
 use model_backup_lib::adapters::lmstudio::LmStudioAdapter;
+use model_backup_lib::adapters::omlx::OmlxAdapter;
 use model_backup_lib::adapters::SourceAdapter;
 use model_backup_lib::core::copy_engine;
 use model_backup_lib::core::drive_monitor::backup_layout_path;
@@ -104,4 +105,17 @@ fn hf_cache_adapter_finds_symlinked_snapshot_files() {
     let found = adapter.scan().unwrap();
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].file_count, 1);
+}
+
+#[test]
+fn omlx_adapter_finds_mlx_model() {
+    let tmp = TempDir::new().unwrap();
+    let model_dir = tmp.path().join("mlx-community").join("Demo-Model");
+    fs::create_dir_all(&model_dir).unwrap();
+    fs::write(model_dir.join("model.safetensors"), b"data").unwrap();
+
+    let adapter = OmlxAdapter::new(Some(tmp.path().to_string_lossy().to_string()));
+    let found = adapter.scan().unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].source, "omlx");
 }

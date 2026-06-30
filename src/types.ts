@@ -56,6 +56,9 @@ export interface DashboardStats {
   mounted_drives: number;
   lmstudio_bytes: number;
   huggingface_bytes: number;
+  omlx_bytes: number;
+  ollama_bytes: number;
+  jan_bytes: number;
 }
 
 export interface JobRecord {
@@ -88,6 +91,9 @@ export type DeleteScope = "source_only" | "backup_only" | "both";
 export interface AppSettings {
   lmstudio_path_override?: string | null;
   hf_cache_path_override?: string | null;
+  omlx_path_override?: string | null;
+  ollama_models_override?: string | null;
+  jan_data_override?: string | null;
   verify_hashes: boolean;
   warn_if_app_running: boolean;
 }
@@ -95,4 +101,7 @@ export interface AppSettings {
 export interface RunningAppsCheck {
   lmstudio_running: boolean;
   huggingface_running: boolean;
+  omlx_running: boolean;
+  ollama_running: boolean;
+  jan_running: boolean;
 }

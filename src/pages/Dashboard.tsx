@@ -45,6 +45,15 @@ export function Dashboard() {
         <div className="stat-inline">
           <strong>Hugging Face:</strong> {formatBytes(stats.huggingface_bytes)}
         </div>
+        <div className="stat-inline">
+          <strong>oMLX:</strong> {formatBytes(stats.omlx_bytes)}
+        </div>
+        <div className="stat-inline">
+          <strong>Ollama:</strong> {formatBytes(stats.ollama_bytes)}
+        </div>
+        <div className="stat-inline">
+          <strong>Jan:</strong> {formatBytes(stats.jan_bytes)}
+        </div>
       </div>
     </div>
   );

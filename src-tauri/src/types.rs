@@ -58,6 +58,9 @@ pub struct DashboardStats {
     pub mounted_drives: u32,
     pub lmstudio_bytes: u64,
     pub huggingface_bytes: u64,
+    pub omlx_bytes: u64,
+    pub ollama_bytes: u64,
+    pub jan_bytes: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,6 +122,9 @@ pub enum DeleteScope {
 pub struct AppSettings {
     pub lmstudio_path_override: Option<String>,
     pub hf_cache_path_override: Option<String>,
+    pub omlx_path_override: Option<String>,
+    pub ollama_models_override: Option<String>,
+    pub jan_data_override: Option<String>,
     pub verify_hashes: bool,
     pub warn_if_app_running: bool,
 }
@@ -128,6 +134,9 @@ impl Default for AppSettings {
         Self {
             lmstudio_path_override: None,
             hf_cache_path_override: None,
+            omlx_path_override: None,
+            ollama_models_override: None,
+            jan_data_override: None,
             verify_hashes: false,
             warn_if_app_running: true,
         }
@@ -138,6 +147,9 @@ impl Default for AppSettings {
 pub struct RunningAppsCheck {
     pub lmstudio_running: bool,
     pub huggingface_running: bool,
+    pub omlx_running: bool,
+    pub ollama_running: bool,
+    pub jan_running: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

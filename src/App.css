@@ -226,6 +226,18 @@ button.small {
   background: #3f2a5f;
 }
 
+.badge.source-omlx {
+  background: #2a5f3f;
+}
+
+.badge.source-ollama {
+  background: #5f3f2a;
+}
+
+.badge.source-jan {
+  background: #3f5f2a;
+}
+
 .badge.status-backed_up {
   background: #1b4332;
   color: var(--success);

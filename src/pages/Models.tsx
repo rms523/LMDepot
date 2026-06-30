@@ -121,6 +121,9 @@ export function ModelsPage() {
             <option value="all">All sources</option>
             <option value="lmstudio">LM Studio</option>
             <option value="huggingface">Hugging Face</option>
+            <option value="omlx">oMLX</option>
+            <option value="ollama">Ollama</option>
+            <option value="jan">Jan</option>
           </select>
           <select
             value={selectedDrive}

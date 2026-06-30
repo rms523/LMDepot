@@ -43,6 +43,9 @@ impl Database {
             match key.as_str() {
                 "lmstudio_path_override" => settings.lmstudio_path_override = Some(value),
                 "hf_cache_path_override" => settings.hf_cache_path_override = Some(value),
+                "omlx_path_override" => settings.omlx_path_override = Some(value),
+                "ollama_models_override" => settings.ollama_models_override = Some(value),
+                "jan_data_override" => settings.jan_data_override = Some(value),
                 "verify_hashes" => settings.verify_hashes = value == "true",
                 "warn_if_app_running" => settings.warn_if_app_running = value == "true",
                 _ => {}
@@ -67,6 +70,21 @@ impl Database {
                     .hf_cache_path_override
                     .clone()
                     .unwrap_or_default(),
+            ),
+            (
+                "omlx_path_override",
+                settings.omlx_path_override.clone().unwrap_or_default(),
+            ),
+            (
+                "ollama_models_override",
+                settings
+                    .ollama_models_override
+                    .clone()
+                    .unwrap_or_default(),
+            ),
+            (
+                "jan_data_override",
+                settings.jan_data_override.clone().unwrap_or_default(),
             ),
             (
                 "verify_hashes",
@@ -414,6 +432,21 @@ impl Database {
             [],
             |r| r.get(0),
         )?;
+        let omlx_bytes: u64 = conn.query_row(
+            "SELECT COALESCE(SUM(total_bytes), 0) FROM models WHERE source = 'omlx'",
+            [],
+            |r| r.get(0),
+        )?;
+        let ollama_bytes: u64 = conn.query_row(
+            "SELECT COALESCE(SUM(total_bytes), 0) FROM models WHERE source = 'ollama'",
+            [],
+            |r| r.get(0),
+        )?;
+        let jan_bytes: u64 = conn.query_row(
+            "SELECT COALESCE(SUM(total_bytes), 0) FROM models WHERE source = 'jan'",
+            [],
+            |r| r.get(0),
+        )?;
         let backed_up_count: u32 = conn.query_row(
             "SELECT COUNT(DISTINCT model_id) FROM model_backups WHERE status = 'backed_up'",
             [],
@@ -435,6 +468,9 @@ impl Database {
             mounted_drives: 0,
             lmstudio_bytes,
             huggingface_bytes,
+            omlx_bytes,
+            ollama_bytes,
+            jan_bytes,
         })
     }
 }

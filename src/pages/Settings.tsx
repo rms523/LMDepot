@@ -36,7 +36,7 @@ export function SettingsPage() {
       <section className="section form-section">
         <h3>Source paths</h3>
         <p className="muted">
-          Override default paths if you relocated LM Studio or Hugging Face cache.
+          Override default paths if you relocated model storage for any provider.
         </p>
         <label>
           LM Studio home override
@@ -56,6 +56,36 @@ export function SettingsPage() {
               setSettings({ ...settings, hf_cache_path_override: e.target.value || null })
             }
             placeholder="~/.cache/huggingface/hub"
+          />
+        </label>
+        <label>
+          oMLX model directory override
+          <input
+            value={settings.omlx_path_override ?? ""}
+            onChange={(e) =>
+              setSettings({ ...settings, omlx_path_override: e.target.value || null })
+            }
+            placeholder="~/.omlx/models"
+          />
+        </label>
+        <label>
+          Ollama models directory override
+          <input
+            value={settings.ollama_models_override ?? ""}
+            onChange={(e) =>
+              setSettings({ ...settings, ollama_models_override: e.target.value || null })
+            }
+            placeholder="~/.ollama/models"
+          />
+        </label>
+        <label>
+          Jan data folder override
+          <input
+            value={settings.jan_data_override ?? ""}
+            onChange={(e) =>
+              setSettings({ ...settings, jan_data_override: e.target.value || null })
+            }
+            placeholder="~/Library/Application Support/jan"
           />
         </label>
       </section>
@@ -78,7 +108,7 @@ export function SettingsPage() {
               setSettings({ ...settings, warn_if_app_running: e.target.checked })
             }
           />
-          Block destructive operations when LM Studio or Hugging Face tools are running
+          Block destructive operations when a model provider app is running
         </label>
       </section>
 
@@ -90,6 +120,15 @@ export function SettingsPage() {
           </div>
           <div>
             Hugging Face: {apps.huggingface_running ? "Running" : "Not running"}
+          </div>
+          <div>
+            oMLX: {apps.omlx_running ? "Running" : "Not running"}
+          </div>
+          <div>
+            Ollama: {apps.ollama_running ? "Running" : "Not running"}
+          </div>
+          <div>
+            Jan: {apps.jan_running ? "Running" : "Not running"}
           </div>
         </section>
       )}

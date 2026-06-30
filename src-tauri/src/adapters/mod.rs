@@ -8,22 +8,38 @@ pub trait SourceAdapter: Send + Sync {
     fn scan(&self) -> AppResult<Vec<ModelRecord>>;
 }
 
+pub mod directory_models;
 pub mod huggingface_cache;
+pub mod jan;
 pub mod lmstudio;
+pub mod ollama;
+pub mod omlx;
 
 use huggingface_cache::HuggingFaceCacheAdapter;
+use jan::JanAdapter;
 use lmstudio::LmStudioAdapter;
+use ollama::OllamaAdapter;
+use omlx::OmlxAdapter;
 
 pub struct AdapterRegistry {
     adapters: Vec<Box<dyn SourceAdapter>>,
 }
 
 impl AdapterRegistry {
-    pub fn new(lmstudio_override: Option<String>, hf_cache_override: Option<String>) -> Self {
+    pub fn new(
+        lmstudio_override: Option<String>,
+        hf_cache_override: Option<String>,
+        omlx_override: Option<String>,
+        ollama_override: Option<String>,
+        jan_override: Option<String>,
+    ) -> Self {
         Self {
             adapters: vec![
                 Box::new(LmStudioAdapter::new(lmstudio_override)),
                 Box::new(HuggingFaceCacheAdapter::new(hf_cache_override)),
+                Box::new(OmlxAdapter::new(omlx_override)),
+                Box::new(OllamaAdapter::new(ollama_override)),
+                Box::new(JanAdapter::new(jan_override)),
             ],
         }
     }

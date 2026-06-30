@@ -22,13 +22,17 @@ export function SizeBadge({ bytes }: { bytes: number }) {
   return <span className="badge">{formatBytes(bytes)}</span>;
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  lmstudio: "LM Studio",
+  huggingface: "Hugging Face",
+  unsloth: "Hugging Face",
+  omlx: "oMLX",
+  ollama: "Ollama",
+  jan: "Jan",
+};
+
 export function SourceBadge({ source }: { source: string }) {
-  const label =
-    source === "lmstudio"
-      ? "LM Studio"
-      : source === "huggingface" || source === "unsloth"
-        ? "Hugging Face"
-        : source;
+  const label = SOURCE_LABELS[source] ?? source;
   return <span className={`badge source-${source}`}>{label}</span>;
 }
 

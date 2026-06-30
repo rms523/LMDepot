@@ -1,10 +1,8 @@
-use super::{collect_files, SourceAdapter};
+use super::directory_models::scan_model_directories;
+use super::SourceAdapter;
 use crate::error::{AppError, AppResult};
 use crate::types::ModelRecord;
-use chrono::Utc;
-use std::path::{Path, PathBuf};
-
-const SKIP_DIRS: &[&str] = &["_active", "_archive", ".cache"];
+use std::path::PathBuf;
 
 pub struct LmStudioAdapter {
     path_override: Option<String>,
@@ -51,100 +49,6 @@ impl LmStudioAdapter {
     fn models_dir(&self) -> AppResult<PathBuf> {
         Ok(self.resolve_home()?.join("models"))
     }
-
-    fn scan_directory(&self, models_root: &Path, rel_prefix: &str) -> AppResult<Vec<ModelRecord>> {
-        use walkdir::WalkDir;
-
-        let mut found = Vec::new();
-        if !models_root.exists() {
-            return Ok(found);
-        }
-
-        let mut candidate_dirs: Vec<PathBuf> = Vec::new();
-
-        for entry in WalkDir::new(models_root)
-            .min_depth(1)
-            .max_depth(4)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-            if !path.is_dir() {
-                continue;
-            }
-            if path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map(|n| SKIP_DIRS.contains(&n))
-                .unwrap_or(false)
-            {
-                continue;
-            }
-
-            let has_model_file = WalkDir::new(path)
-                .max_depth(3)
-                .into_iter()
-                .filter_map(|e| e.ok())
-                .any(|e| {
-                    e.file_type().is_file()
-                        && e.path()
-                            .extension()
-                            .and_then(|ext| ext.to_str())
-                            .map(|ext| {
-                                matches!(
-                                    ext.to_lowercase().as_str(),
-                                    "gguf" | "safetensors" | "bin" | "mlx"
-                                )
-                            })
-                            .unwrap_or(false)
-                });
-
-            if !has_model_file {
-                continue;
-            }
-
-            // Prefer the deepest directory that contains model files.
-            candidate_dirs.retain(|c| !path.starts_with(c));
-            candidate_dirs.retain(|c| !c.starts_with(path));
-            candidate_dirs.push(path.to_path_buf());
-        }
-
-        let scanned_at = Utc::now().to_rfc3339();
-
-        for dir in candidate_dirs {
-            let rel = dir
-                .strip_prefix(models_root)
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|_| dir.file_name().unwrap().to_string_lossy().to_string());
-
-            let display_name = if rel_prefix.is_empty() {
-                rel.clone()
-            } else {
-                format!("{rel_prefix}/{rel}")
-            };
-
-            let id = format!("lmstudio:{}", display_name.replace('\\', "/"));
-            let (total_bytes, file_count, files) = collect_files(&dir)?;
-
-            if file_count == 0 {
-                continue;
-            }
-
-            found.push(ModelRecord {
-                id,
-                display_name: display_name.replace('\\', "/"),
-                source: "lmstudio".to_string(),
-                primary_path: dir.to_string_lossy().to_string(),
-                total_bytes,
-                file_count,
-                scanned_at: scanned_at.clone(),
-                revision: None,
-                files,
-            });
-        }
-
-        Ok(found)
-    }
 }
 
 impl SourceAdapter for LmStudioAdapter {
@@ -157,8 +61,7 @@ impl SourceAdapter for LmStudioAdapter {
     }
 
     fn scan(&self) -> AppResult<Vec<ModelRecord>> {
-        let models_root = self.models_dir()?;
-        self.scan_directory(&models_root, "")
+        scan_model_directories(&[self.models_dir()?], "lmstudio", "lmstudio:")
     }
 }
 
