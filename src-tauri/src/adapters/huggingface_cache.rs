@@ -19,18 +19,20 @@ impl HuggingFaceCacheAdapter {
                 return Ok(PathBuf::from(cache));
             }
         }
-        if let Ok(home) = std::env::var("HF_HOME") {
+        let hf_home = if let Ok(home) = std::env::var("HF_HOME") {
             if !home.is_empty() {
-                return Ok(PathBuf::from(home).join("hub"));
+                PathBuf::from(home)
+            } else if let Some(dir) = dirs::home_dir() {
+                dir.join(".cache").join("huggingface")
+            } else {
+                return Err(AppError::msg("Could not resolve Hugging Face cache directory"));
             }
-        }
-        if let Some(xdg) = std::env::var_os("XDG_CACHE_HOME") {
-            return Ok(PathBuf::from(xdg).join("huggingface").join("hub"));
-        }
-        if let Some(home) = dirs::home_dir() {
-            return Ok(home.join(".cache").join("huggingface").join("hub"));
-        }
-        Err(AppError::msg("Could not resolve Hugging Face cache directory"))
+        } else if let Some(dir) = dirs::home_dir() {
+            dir.join(".cache").join("huggingface")
+        } else {
+            return Err(AppError::msg("Could not resolve Hugging Face cache directory"));
+        };
+        Ok(hf_home.join("hub"))
     }
 
     fn parse_repo_dir(name: &str) -> Option<(String, String)> {

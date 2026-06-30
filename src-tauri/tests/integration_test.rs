@@ -84,3 +84,24 @@ fn hf_cache_adapter_finds_repo() {
     assert_eq!(found[0].display_name, "demo/Test-Model");
     assert_eq!(found[0].source, "huggingface");
 }
+
+#[test]
+fn hf_cache_adapter_finds_symlinked_snapshot_files() {
+    let tmp = TempDir::new().unwrap();
+    let repo = tmp.path().join("models--demo--Symlink-Model");
+    let blobs = repo.join("blobs");
+    let snapshot = repo.join("snapshots").join("abc123");
+    fs::create_dir_all(&blobs).unwrap();
+    fs::create_dir_all(&snapshot).unwrap();
+    let blob = blobs.join("deadbeef");
+    fs::write(&blob, b"gguf-bytes").unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&blob, snapshot.join("model.gguf")).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_file(&blob, snapshot.join("model.gguf")).unwrap();
+
+    let adapter = HuggingFaceCacheAdapter::new(Some(tmp.path().to_string_lossy().to_string()));
+    let found = adapter.scan().unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].file_count, 1);
+}

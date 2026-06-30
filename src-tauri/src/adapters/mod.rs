@@ -63,10 +63,18 @@ pub fn collect_files(base: &std::path::Path) -> AppResult<(u64, u32, Vec<crate::
     let mut files = Vec::new();
 
     for entry in WalkDir::new(base).into_iter().filter_map(|e| e.ok()) {
-        if !entry.file_type().is_file() {
+        let ft = entry.file_type();
+        // HF Hub snapshots store files as symlinks into blobs/; LM Studio uses real files.
+        if !ft.is_file() && !ft.is_symlink() {
             continue;
         }
         let path = entry.path();
+        if ft.is_symlink() && path.is_dir() {
+            continue;
+        }
+        if !path.is_file() {
+            continue;
+        }
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         if !is_model_file(name) && !name.ends_with(".json") && !name.ends_with(".txt") {
             continue;
@@ -93,4 +101,34 @@ pub fn collect_files(base: &std::path::Path) -> AppResult<(u64, u32, Vec<crate::
     }
     files.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
     Ok((total_bytes, file_count, files))
+}
+
+#[cfg(test)]
+mod collect_files_tests {
+    use super::*;
+    use std::fs;
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+    use tempfile::TempDir;
+
+    #[test]
+    fn counts_symlinked_model_files() {
+        let tmp = TempDir::new().unwrap();
+        let blobs = tmp.path().join("blobs");
+        let snapshot = tmp.path().join("snapshot");
+        fs::create_dir_all(&blobs).unwrap();
+        fs::create_dir_all(&snapshot).unwrap();
+        let blob = blobs.join("abc123");
+        fs::write(&blob, vec![0u8; 512]).unwrap();
+        let link = snapshot.join("model.safetensors");
+        #[cfg(unix)]
+        symlink(&blob, &link).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_file(&blob, &link).unwrap();
+
+        let (total_bytes, file_count, files) = collect_files(&snapshot).unwrap();
+        assert_eq!(file_count, 1);
+        assert_eq!(total_bytes, 512);
+        assert_eq!(files[0].relative_path, "model.safetensors");
+    }
 }
