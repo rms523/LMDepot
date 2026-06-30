@@ -1,15 +1,23 @@
 import { listen } from "@tauri-apps/api/event";
 import type { JobProgressEvent } from "./types";
 
+/** Mutable store — updated in place on each event. */
 const live: Record<string, JobProgressEvent> = {};
+
+/**
+ * Immutable snapshot for useSyncExternalStore.
+ * Must keep a stable reference between updates; only replace on notify().
+ */
+let snapshot: Record<string, JobProgressEvent> = live;
+
 const subscribers = new Set<() => void>();
 
 export function getLiveJobProgress(jobId: string): JobProgressEvent | undefined {
-  return live[jobId];
+  return snapshot[jobId];
 }
 
 export function getAllLiveProgress(): Record<string, JobProgressEvent> {
-  return { ...live };
+  return snapshot;
 }
 
 export function subscribeJobProgress(cb: () => void): () => void {
@@ -18,6 +26,7 @@ export function subscribeJobProgress(cb: () => void): () => void {
 }
 
 function notify() {
+  snapshot = { ...live };
   subscribers.forEach((cb) => cb());
 }
 
@@ -37,5 +46,8 @@ export function startJobProgressListener(): Promise<() => void> {
 }
 
 export function clearLiveProgress(jobId: string) {
-  delete live[jobId];
+  if (jobId in live) {
+    delete live[jobId];
+    notify();
+  }
 }

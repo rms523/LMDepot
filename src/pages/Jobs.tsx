@@ -43,15 +43,19 @@ export function JobsPage() {
     return () => clearInterval(interval);
   }, [load, hasRunning]);
 
-  // Refresh list when a job finishes (live event may arrive before DB write)
+  // Reload when a live event reports finished but DB row is still running
   useEffect(() => {
-    const finished = Object.values(liveProgress).some((e) =>
-      ["completed", "failed", "cancelled"].includes(e.status)
-    );
-    if (finished) {
+    const stale = Object.entries(liveProgress).some(([jobId, event]) => {
+      if (!["completed", "failed", "cancelled"].includes(event.status)) {
+        return false;
+      }
+      const job = jobs.find((j) => j.id === jobId);
+      return job?.status === "running";
+    });
+    if (stale) {
       load();
     }
-  }, [liveProgress, load]);
+  }, [liveProgress, jobs, load]);
 
   const handleCancel = async (jobId: string) => {
     try {
