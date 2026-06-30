@@ -32,6 +32,10 @@ export function Dashboard() {
           <div className="stat-label">Backup coverage</div>
         </div>
         <div className="stat-card">
+          <div className="stat-value">{stats.offloaded_count}</div>
+          <div className="stat-label">Offloaded</div>
+        </div>
+        <div className="stat-card">
           <div className="stat-value">
             {stats.mounted_drives}/{stats.drive_count}
           </div>

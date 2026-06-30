@@ -2,6 +2,7 @@ mod schema_embed {
     pub const SCHEMA: &str = include_str!("schema.sql");
 }
 
+use crate::core::copy_engine;
 use crate::error::{AppError, AppResult};
 use crate::types::{
     AppSettings, BackupDrive, DashboardStats, JobRecord, ModelBackupStatus, ModelFileRecord,
@@ -163,6 +164,7 @@ impl Database {
             let backups = self.get_backup_status_inner(&conn, &model.id)?;
             result.push(ModelWithBackups {
                 source_present: Self::source_path_present(&model.primary_path),
+                is_offloaded: Self::is_offloaded_path(&model.primary_path),
                 model,
                 backups,
             });
@@ -182,6 +184,7 @@ impl Database {
             let backups = self.get_backup_status_inner(&conn, &model.id)?;
             return Ok(Some(ModelWithBackups {
                 source_present: Self::source_path_present(&model.primary_path),
+                is_offloaded: Self::is_offloaded_path(&model.primary_path),
                 model,
                 backups,
             }));
@@ -191,6 +194,10 @@ impl Database {
 
     fn source_path_present(path: &str) -> bool {
         Path::new(path).exists()
+    }
+
+    fn is_offloaded_path(path: &str) -> bool {
+        copy_engine::is_symlink(Path::new(path))
     }
 
     fn get_model_files_inner(
@@ -489,10 +496,18 @@ impl Database {
             |r| r.get(0),
         )?;
         let backed_up_count: u32 = conn.query_row(
-            "SELECT COUNT(DISTINCT model_id) FROM model_backups WHERE status = 'backed_up'",
+            "SELECT COUNT(DISTINCT model_id) FROM model_backups WHERE status IN ('backed_up', 'offloaded')",
             [],
             |r| r.get(0),
         )?;
+        let mut offloaded_count: u32 = 0;
+        let mut stmt = conn.prepare("SELECT primary_path FROM models")?;
+        let paths = stmt.query_map([], |row| row.get::<_, String>(0))?;
+        for path in paths {
+            if copy_engine::is_symlink(Path::new(&path?)) {
+                offloaded_count += 1;
+            }
+        }
         let drive_count: u32 =
             conn.query_row("SELECT COUNT(*) FROM backup_drives", [], |r| r.get(0))?;
         let coverage = if total_models > 0 {
@@ -512,6 +527,7 @@ impl Database {
             omlx_bytes,
             ollama_bytes,
             jan_bytes,
+            offloaded_count,
         })
     }
 }

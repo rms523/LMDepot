@@ -559,6 +559,16 @@ button.secondary:hover:not(:disabled) {
   color: #f0d080;
 }
 
+.badge.status-offloaded {
+  background: #2a3a5a;
+  color: #9ec5ff;
+}
+
+.offloaded-banner {
+  border-color: #2a3a5a;
+  background: rgba(42, 58, 90, 0.35);
+}
+
 /* Settings page */
 .settings-page {
   max-width: 960px;

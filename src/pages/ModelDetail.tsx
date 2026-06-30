@@ -37,10 +37,13 @@ export function ModelDetail({ model, drives, onBack, onModelUpdated }: Props) {
 
   const mountedDrives = drives.filter((d) => d.is_mounted);
   const sourcePresent = detail.source_present;
+  const isOffloaded = detail.is_offloaded;
   const hasBackupOnDrive =
     !!selectedDrive &&
-    detail.backups.some((b) => b.drive_id === selectedDrive && b.status === "backed_up");
-  const needsSource = !sourcePresent;
+    detail.backups.some((b) => b.drive_id === selectedDrive && b.status !== "missing");
+  const hasLocalCopy = sourcePresent && !isOffloaded;
+  const canRestore = !isOffloaded && !sourcePresent && hasBackupOnDrive;
+  const canReverseOffload = isOffloaded && hasBackupOnDrive;
 
   const runAction = async (
     action: () => Promise<string>,
@@ -103,10 +106,19 @@ export function ModelDetail({ model, drives, onBack, onModelUpdated }: Props) {
       <div className="detail-header">
         <h2>{detail.display_name}</h2>
         <SourceBadge source={detail.source} />
-        {!sourcePresent && <StatusBadge status="source_missing" />}
+        {isOffloaded && <StatusBadge status="offloaded" />}
+        {!sourcePresent && !isOffloaded && <StatusBadge status="source_missing" />}
       </div>
 
-      {!sourcePresent && (
+      {isOffloaded && (
+        <div className="notice-banner offloaded-banner">
+          This model is <strong>offloaded</strong> — local files live on the backup drive and a
+          symlink remains at <code>{detail.primary_path}</code>. Use{" "}
+          <strong>Reverse offload</strong> to copy files back locally.
+        </div>
+      )}
+
+      {!sourcePresent && !isOffloaded && (
         <div className="notice-banner">
           Local copy removed. Files remain on your backup drive — use{" "}
           <strong>Restore from backup</strong> to copy them back to{" "}
@@ -169,19 +181,19 @@ export function ModelDetail({ model, drives, onBack, onModelUpdated }: Props) {
         <h3>Actions</h3>
         <div className="action-grid">
           <button
-            disabled={busy || !selectedDrive || needsSource}
+            disabled={busy || !selectedDrive || !hasLocalCopy}
             onClick={() => runAction(() => startBackup(detail.id, selectedDrive), "Backup")}
           >
             Backup
           </button>
           <button
-            disabled={busy || !selectedDrive || needsSource}
+            disabled={busy || !selectedDrive || !hasLocalCopy}
             onClick={() => runAction(() => startSync(detail.id, selectedDrive), "Sync")}
           >
             Sync to backup
           </button>
           <button
-            disabled={busy || !selectedDrive || !hasBackupOnDrive}
+            disabled={busy || !selectedDrive || !canRestore}
             onClick={() =>
               runAction(() => startRestore(detail.id, selectedDrive), "Restore")
             }
@@ -191,13 +203,13 @@ export function ModelDetail({ model, drives, onBack, onModelUpdated }: Props) {
           <ActionButtonWithHint
             label="Offload (move + symlink)"
             hint="Copies this model to the backup drive, deletes the local files, and leaves a symlink at the original path so your provider app still finds the model."
-            disabled={busy || !selectedDrive || needsSource}
+            disabled={busy || !selectedDrive || !hasLocalCopy || isOffloaded}
             onClick={() => runAction(() => startOffload(detail.id, selectedDrive), "Offload")}
           />
           <ActionButtonWithHint
             label="Reverse offload"
-            hint="Removes the symlink and moves the model files back from the backup drive to the original local folder."
-            disabled={busy || !selectedDrive || needsSource}
+            hint="Removes the symlink and copies the model files back from the backup drive to the original local folder."
+            disabled={busy || !selectedDrive || !canReverseOffload}
             onClick={() =>
               runAction(() => reverseOffload(detail.id, selectedDrive), "Reverse offload")
             }
@@ -210,7 +222,7 @@ export function ModelDetail({ model, drives, onBack, onModelUpdated }: Props) {
         <div className="action-grid">
           <button
             className="danger"
-            disabled={busy || needsSource}
+            disabled={busy || !hasLocalCopy}
             onClick={() => confirmDelete("source_only")}
           >
             Delete from source

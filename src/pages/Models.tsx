@@ -8,6 +8,7 @@ import {
   startBackupAll,
   startSyncAll,
 } from "../api/client";
+import { ActionButtonWithHint } from "../components/ActionButtonWithHint";
 import { SizeBadge, SourceBadge, StatusBadge } from "../components/Badges";
 import { getAllLiveProgress, subscribeJobProgress } from "../jobProgress";
 import { getActiveModelIds, hasRunningModelJobs, jobLabelForModel } from "../modelJobs";
@@ -231,16 +232,19 @@ export function ModelsPage() {
           >
             Backup all
           </button>
-          <button
-            className="secondary"
-            onClick={() => runBulk("sync")}
+          <ActionButtonWithHint
+            label="Sync all"
+            buttonClassName="secondary"
+            hint="For each model in this list, copies new or changed files from your local folders to the selected backup drive. Does not scan backup drives or import models that exist only on external storage."
             disabled={bulkBusy || !selectedDrive || filtered.length === 0}
-          >
-            Sync all
-          </button>
-          <button onClick={handleRescan} disabled={scanning}>
-            {scanning ? "Scanning..." : "Rescan"}
-          </button>
+            onClick={() => runBulk("sync")}
+          />
+          <ActionButtonWithHint
+            label={scanning ? "Scanning..." : "Rescan"}
+            hint="Scans local provider folders only (LM Studio, Hugging Face, oMLX, Ollama, Jan) and refreshes the model list. Does not scan backup drives."
+            disabled={scanning}
+            onClick={handleRescan}
+          />
         </div>
       </div>
 
@@ -286,6 +290,16 @@ export function ModelsPage() {
                         {progressLabel && (
                           <span className="muted progress-hint"> {progressLabel}</span>
                         )}
+                      </div>
+                    ) : m.is_offloaded ? (
+                      <div className="backup-line">
+                        <StatusBadge status="offloaded" />
+                        {m.backups.map((b) => (
+                          <span key={b.drive_id} className="muted">
+                            {" "}
+                            · {b.drive_label}
+                          </span>
+                        ))}
                       </div>
                     ) : !m.source_present ? (
                       <div className="backup-line">

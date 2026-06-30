@@ -47,6 +47,8 @@ export interface ModelWithBackups {
   backups: ModelBackupStatus[];
   /** False when the local model folder no longer exists (e.g. after delete-from-source). */
   source_present: boolean;
+  /** True when the local path is a symlink to backup storage (offloaded). */
+  is_offloaded: boolean;
 }
 
 export interface DashboardStats {
@@ -61,6 +63,7 @@ export interface DashboardStats {
   omlx_bytes: number;
   ollama_bytes: number;
   jan_bytes: number;
+  offloaded_count: number;
 }
 
 export interface JobRecord {

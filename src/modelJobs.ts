@@ -7,6 +7,7 @@ const MODEL_JOB_TYPES = new Set([
   "sync_all",
   "restore",
   "offload",
+  "reverse_offload",
 ]);
 
 /** Model IDs with an active backup/sync/restore/offload job. */
@@ -51,6 +52,7 @@ export function jobLabelForModel(
     }
     if (job.job_type.includes("sync")) return "Syncing…";
     if (job.job_type.includes("restore")) return "Restoring…";
+    if (job.job_type === "reverse_offload") return "Reversing offload…";
     if (job.job_type.includes("offload")) return "Offloading…";
     return "Backing up…";
   }

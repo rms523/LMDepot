@@ -48,6 +48,8 @@ pub struct ModelWithBackups {
     pub backups: Vec<ModelBackupStatus>,
     /// False when the local model path no longer exists (e.g. after delete-from-source).
     pub source_present: bool,
+    /// True when the local path is a symlink to a backup (offloaded).
+    pub is_offloaded: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,6 +65,7 @@ pub struct DashboardStats {
     pub omlx_bytes: u64,
     pub ollama_bytes: u64,
     pub jan_bytes: u64,
+    pub offloaded_count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

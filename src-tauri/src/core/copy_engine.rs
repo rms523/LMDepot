@@ -4,6 +4,7 @@ use sha2::{Digest, Sha256};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
+use walkdir::WalkDir;
 
 const CHUNK_SIZE: usize = 10 * 1024 * 1024; // 10 MB read/write chunks
 
@@ -204,6 +205,55 @@ pub fn move_dir(src: &Path, dst: &Path) -> AppResult<()> {
             dst.display()
         )));
     }
-    fs::rename(src, dst)?;
+    match fs::rename(src, dst) {
+        Ok(()) => Ok(()),
+        Err(e) if is_cross_device_rename_error(&e) => {
+            copy_dir_all(src, dst)?;
+            remove_dir_all(src)?;
+            Ok(())
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+fn is_cross_device_rename_error(err: &std::io::Error) -> bool {
+    #[cfg(unix)]
+    {
+        err.raw_os_error() == Some(18) // EXDEV
+    }
+    #[cfg(windows)]
+    {
+        err.raw_os_error() == Some(17) // ERROR_NOT_SAME_DEVICE
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = err;
+        false
+    }
+}
+
+/// Recursive directory copy used when rename cannot cross mount points.
+pub fn copy_dir_all(src: &Path, dst: &Path) -> AppResult<()> {
+    if !src.is_dir() {
+        return Err(AppError::msg(format!("Not a directory: {}", src.display())));
+    }
+    for entry in WalkDir::new(src).follow_links(true).into_iter() {
+        let entry = entry.map_err(|e| AppError::msg(e.to_string()))?;
+        let rel = entry
+            .path()
+            .strip_prefix(src)
+            .map_err(|e| AppError::msg(e.to_string()))?;
+        let target = dst.join(rel);
+        let ft = entry.file_type();
+        if ft.is_dir() {
+            fs::create_dir_all(&target)?;
+        } else if ft.is_file() || ft.is_symlink() {
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let mut noop = || Ok(());
+            copy_file_with_progress(&entry.path(), &target, None::<fn(u64)>, &mut noop)?;
+        }
+    }
     Ok(())
 }
