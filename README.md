@@ -2,6 +2,22 @@
 
 Cross-platform desktop app for backing up AI models from **LM Studio** and the **Hugging Face Hub cache** to one or more external drives.
 
+## Screenshots
+
+Place PNG files in [`assets/screenshots/`](assets/screenshots/).
+
+### Dashboard
+
+![LMDepot dashboard](assets/screenshots/dashboard.png)
+
+### Models
+
+![Models list with backup status](assets/screenshots/models.png)
+
+### Backup drives
+
+![Backup drives — import, restore, and bulk actions](assets/screenshots/backup-drives.png)
+
 ## Features
 
 - **Discover models** from LM Studio (`~/.lmstudio`, `~/.cache/lm-studio`, or `.lmstudio-home-pointer`) and the Hugging Face Hub cache (`~/.cache/huggingface/hub`, or `HF_HUB_CACHE` / `HF_HOME`)
