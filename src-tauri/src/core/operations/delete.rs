@@ -13,14 +13,6 @@ pub fn run(
     drive_id: Option<String>,
     scope: DeleteScope,
 ) -> AppResult<()> {
-    let settings = ctx.db.get_settings()?;
-    validate_apps_not_running(settings.warn_if_app_running)?;
-
-    let model_with = ctx
-        .db
-        .get_model(model_id)?
-        .ok_or_else(|| AppError::msg("Model not found"))?;
-
     let mut job = new_job(job_id, "delete", model_id, drive_id.as_deref().unwrap_or(""));
     if drive_id.is_none() {
         job.drive_id = None;
@@ -28,6 +20,14 @@ pub fn run(
     ctx.db.create_job(&job)?;
 
     let result = (|| -> AppResult<()> {
+        let settings = ctx.db.get_settings()?;
+        validate_apps_not_running(settings.warn_if_app_running)?;
+
+        let model_with = ctx
+            .db
+            .get_model(model_id)?
+            .ok_or_else(|| AppError::msg("Model not found"))?;
+
         ctx.check_cancelled()?;
 
         match scope {

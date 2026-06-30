@@ -9,6 +9,7 @@ import {
   startSync,
   reverseOffload,
 } from "../api/client";
+import { ActionButtonWithHint } from "../components/ActionButtonWithHint";
 import { SizeBadge, SourceBadge, StatusBadge } from "../components/Badges";
 import type { BackupDrive, DeleteScope, ModelWithBackups } from "../types";
 
@@ -29,8 +30,12 @@ export function ModelDetail({ model, drives, onBack }: Props) {
 
   const mountedDrives = drives.filter((d) => d.is_mounted);
 
-  const runAction = async (action: () => Promise<string>, label: string) => {
-    if (!selectedDrive && label !== "delete") {
+  const runAction = async (
+    action: () => Promise<string>,
+    label: string,
+    requireDrive = true
+  ) => {
+    if (requireDrive && !selectedDrive) {
       setError("Select a backup drive first");
       return;
     }
@@ -55,9 +60,16 @@ export function ModelDetail({ model, drives, onBack }: Props) {
 
   const executeDelete = () => {
     if (!showDeleteConfirm) return;
+    const needsDrive = showDeleteConfirm !== "source_only";
     runAction(
-      () => startDelete(model.id, showDeleteConfirm, selectedDrive || undefined),
-      "Delete"
+      () =>
+        startDelete(
+          model.id,
+          showDeleteConfirm,
+          needsDrive ? selectedDrive || undefined : undefined
+        ),
+      "Delete",
+      needsDrive
     );
   };
 
@@ -146,20 +158,20 @@ export function ModelDetail({ model, drives, onBack }: Props) {
           >
             Restore from backup
           </button>
-          <button
+          <ActionButtonWithHint
+            label="Offload (move + symlink)"
+            hint="Copies this model to the backup drive, deletes the local files, and leaves a symlink at the original path so your provider app still finds the model."
             disabled={busy || !selectedDrive}
             onClick={() => runAction(() => startOffload(model.id, selectedDrive), "Offload")}
-          >
-            Offload (move + symlink)
-          </button>
-          <button
+          />
+          <ActionButtonWithHint
+            label="Reverse offload"
+            hint="Removes the symlink and moves the model files back from the backup drive to the original local folder."
             disabled={busy || !selectedDrive}
             onClick={() =>
               runAction(() => reverseOffload(model.id, selectedDrive), "Reverse offload")
             }
-          >
-            Reverse offload
-          </button>
+          />
         </div>
       </section>
 

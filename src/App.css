@@ -456,6 +456,89 @@ button.secondary:hover:not(:disabled) {
   gap: 0.5rem;
 }
 
+.action-btn-hint-wrap {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.action-btn-hint-wrap > button {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.action-btn-hint-wrap.is-disabled > button {
+  pointer-events: none;
+}
+
+.action-btn-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  flex-shrink: 0;
+  background: var(--accent-dim);
+  color: #fff;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0 6px 6px 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  cursor: help;
+  outline: none;
+}
+
+.action-btn-hint-wrap:not(.is-disabled):hover .action-btn-info,
+.action-btn-hint-wrap:not(.is-disabled) > button:hover + .action-btn-info {
+  background: var(--accent);
+}
+
+.action-btn-info:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45);
+}
+
+.action-btn-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: 280px;
+  padding: 0.5rem 0.65rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 400;
+  font-family: inherit;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+
+.action-btn-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0.55rem;
+  border: 5px solid transparent;
+  border-top-color: var(--border);
+}
+
+.action-btn-info:hover .action-btn-tooltip,
+.action-btn-info:focus-visible .action-btn-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
 .danger-section {
   border-top: 1px solid var(--border);
   padding-top: 1rem;

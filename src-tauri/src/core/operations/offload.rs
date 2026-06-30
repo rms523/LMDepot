@@ -6,25 +6,26 @@ use std::path::Path;
 use uuid::Uuid;
 
 pub fn run(ctx: &JobContext, job_id: &str, model_id: &str, drive_id: &str) -> AppResult<()> {
-    let settings = ctx.db.get_settings()?;
-    validate_apps_not_running(settings.warn_if_app_running)?;
-
-    let model = ctx
-        .db
-        .get_model(model_id)?
-        .ok_or_else(|| AppError::msg("Model not found"))?
-        .model;
-
-    let source_path = Path::new(&model.primary_path);
-    if copy_engine::is_symlink(source_path) {
-        return Err(AppError::msg("Model is already offloaded"));
-    }
-
-    let (_drive, backup_path) = prepare_backup_path(&ctx.db, drive_id, &model)?;
     let mut job = new_job(job_id, "offload", model_id, drive_id);
     ctx.db.create_job(&job)?;
 
     let result = (|| -> AppResult<()> {
+        let settings = ctx.db.get_settings()?;
+        validate_apps_not_running(settings.warn_if_app_running)?;
+
+        let model = ctx
+            .db
+            .get_model(model_id)?
+            .ok_or_else(|| AppError::msg("Model not found"))?
+            .model;
+
+        let source_path = Path::new(&model.primary_path);
+        if copy_engine::is_symlink(source_path) {
+            return Err(AppError::msg("Model is already offloaded"));
+        }
+
+        let (_drive, backup_path) = prepare_backup_path(&ctx.db, drive_id, &model)?;
+
         ctx.check_cancelled()?;
         std::fs::create_dir_all(&backup_path)?;
 
@@ -58,29 +59,29 @@ pub fn run(ctx: &JobContext, job_id: &str, model_id: &str, drive_id: &str) -> Ap
 }
 
 pub fn reverse_offload(ctx: &JobContext, job_id: &str, model_id: &str, drive_id: &str) -> AppResult<()> {
-    let settings = ctx.db.get_settings()?;
-    validate_apps_not_running(settings.warn_if_app_running)?;
-
-    let model = ctx
-        .db
-        .get_model(model_id)?
-        .ok_or_else(|| AppError::msg("Model not found"))?
-        .model;
-
-    let source_path = Path::new(&model.primary_path);
-    if !copy_engine::is_symlink(source_path) {
-        return Err(AppError::msg("Model is not offloaded"));
-    }
-
-    let target = source_path
-        .read_link()
-        .map_err(|e| AppError::msg(e.to_string()))?;
-
-    let mut job = new_job(job_id, "offload", model_id, drive_id);
+    let mut job = new_job(job_id, "reverse_offload", model_id, drive_id);
     job.message = Some("Reversing offload...".to_string());
     ctx.db.create_job(&job)?;
 
     let result = (|| -> AppResult<()> {
+        let settings = ctx.db.get_settings()?;
+        validate_apps_not_running(settings.warn_if_app_running)?;
+
+        let model = ctx
+            .db
+            .get_model(model_id)?
+            .ok_or_else(|| AppError::msg("Model not found"))?
+            .model;
+
+        let source_path = Path::new(&model.primary_path);
+        if !copy_engine::is_symlink(source_path) {
+            return Err(AppError::msg("Model is not offloaded"));
+        }
+
+        let target = source_path
+            .read_link()
+            .map_err(|e| AppError::msg(e.to_string()))?;
+
         ctx.check_cancelled()?;
         copy_engine::remove_file_or_dir(source_path)?;
         move_dir(&target, source_path)?;
