@@ -8,6 +8,7 @@ use std::path::Path;
 
 pub fn run(
     ctx: &JobContext,
+    job_id: &str,
     model_id: &str,
     drive_id: Option<String>,
     scope: DeleteScope,
@@ -20,7 +21,7 @@ pub fn run(
         .get_model(model_id)?
         .ok_or_else(|| AppError::msg("Model not found"))?;
 
-    let mut job = new_job("delete", model_id, drive_id.as_deref().unwrap_or(""));
+    let mut job = new_job(job_id, "delete", model_id, drive_id.as_deref().unwrap_or(""));
     if drive_id.is_none() {
         job.drive_id = None;
     }

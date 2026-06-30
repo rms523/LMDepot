@@ -55,8 +55,8 @@ pub fn execute_sync(
     Ok(())
 }
 
-pub fn run(ctx: &JobContext, model_id: &str, drive_id: &str) -> AppResult<()> {
-    let mut job = new_job("sync", model_id, drive_id);
+pub fn run(ctx: &JobContext, job_id: &str, model_id: &str, drive_id: &str) -> AppResult<()> {
+    let mut job = new_job(job_id, "sync", model_id, drive_id);
     ctx.db.create_job(&job)?;
 
     let result = execute_sync(ctx, &mut job, model_id, drive_id);

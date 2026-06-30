@@ -17,14 +17,17 @@ pub fn compute_total_bytes(files: &[ModelFileRecord]) -> u64 {
     files.iter().map(|f| f.size).sum()
 }
 
-pub fn copy_file_with_progress<F>(
+pub fn copy_file_with_progress<F, S>(
     src: &Path,
     dst: &Path,
     mut on_progress: Option<F>,
+    should_stop: &mut S,
 ) -> AppResult<u64>
 where
     F: FnMut(u64),
+    S: FnMut() -> AppResult<()>,
 {
+    should_stop()?;
     if let Some(parent) = dst.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -56,6 +59,7 @@ where
     let mut buffer = vec![0u8; CHUNK_SIZE];
     let mut copied = 0u64;
     loop {
+        should_stop()?;
         let n = src_file.read(&mut buffer)?;
         if n == 0 {
             break;
@@ -74,12 +78,14 @@ pub fn copy_model_files(
     source_root: &Path,
     dest_root: &Path,
     files: &[ModelFileRecord],
+    mut should_stop: impl FnMut() -> AppResult<()>,
     mut progress: impl FnMut(CopyProgress),
 ) -> AppResult<u64> {
     let total = compute_total_bytes(files);
     let mut bytes_done = 0u64;
 
     for file in files {
+        should_stop()?;
         let src = source_root.join(&file.relative_path);
         let dst = dest_root.join(&file.relative_path);
 
@@ -99,13 +105,18 @@ pub fn copy_model_files(
             current_file: current_file.clone(),
         });
 
-        let copied = copy_file_with_progress(&src, &dst, Some(|chunk| {
-            progress(CopyProgress {
-                bytes_done: file_start + chunk,
-                bytes_total: total,
-                current_file: current_file.clone(),
-            });
-        }))?;
+        let copied = copy_file_with_progress(
+            &src,
+            &dst,
+            Some(|chunk| {
+                progress(CopyProgress {
+                    bytes_done: file_start + chunk,
+                    bytes_total: total,
+                    current_file: current_file.clone(),
+                });
+            }),
+            &mut should_stop,
+        )?;
         bytes_done += copied;
 
         progress(CopyProgress {

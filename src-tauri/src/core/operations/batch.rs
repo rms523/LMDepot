@@ -2,8 +2,9 @@ use super::{backup, sync, JobContext};
 use crate::error::{AppError, AppResult};
 use crate::types::JobRecord;
 use chrono::Utc;
+use std::sync::atomic::Ordering;
 
-pub fn backup_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
+pub fn backup_all(ctx: &JobContext, job_id: &str, drive_id: &str) -> AppResult<()> {
     let models = ctx.db.list_models(None)?;
     if models.is_empty() {
         return Err(AppError::msg("No models to backup"));
@@ -11,7 +12,7 @@ pub fn backup_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
 
     let total_bytes: u64 = models.iter().map(|m| m.model.total_bytes).sum();
     let mut job = JobRecord {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: job_id.to_string(),
         job_type: "backup_all".to_string(),
         status: "running".to_string(),
         model_id: None,
@@ -31,6 +32,9 @@ pub fn backup_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
     let mut errors: Vec<String> = Vec::new();
 
     for (index, entry) in models.iter().enumerate() {
+        if ctx.check_cancelled().is_err() {
+            break;
+        }
         let model = &entry.model;
         job.model_id = Some(model.id.clone());
         job.message = Some(format!(
@@ -59,6 +63,16 @@ pub fn backup_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
         }
     }
 
+    if ctx.cancelled.load(Ordering::Relaxed) {
+        let msg = if completed > 0 {
+            format!("Cancelled after backing up {completed} models")
+        } else {
+            "Backup cancelled".to_string()
+        };
+        ctx.finish_job(&mut job, false, &msg)?;
+        return Err(AppError::msg("Job cancelled"));
+    }
+
     let msg = if errors.is_empty() {
         format!("Backed up {completed} models")
     } else if completed > 0 {
@@ -78,7 +92,7 @@ pub fn backup_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
     Ok(())
 }
 
-pub fn sync_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
+pub fn sync_all(ctx: &JobContext, job_id: &str, drive_id: &str) -> AppResult<()> {
     let models = ctx.db.list_models(None)?;
     if models.is_empty() {
         return Err(AppError::msg("No models to sync"));
@@ -86,7 +100,7 @@ pub fn sync_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
 
     let total_bytes: u64 = models.iter().map(|m| m.model.total_bytes).sum();
     let mut job = JobRecord {
-        id: uuid::Uuid::new_v4().to_string(),
+        id: job_id.to_string(),
         job_type: "sync_all".to_string(),
         status: "running".to_string(),
         model_id: None,
@@ -106,6 +120,9 @@ pub fn sync_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
     let mut errors: Vec<String> = Vec::new();
 
     for (index, entry) in models.iter().enumerate() {
+        if ctx.check_cancelled().is_err() {
+            break;
+        }
         let model = &entry.model;
         job.model_id = Some(model.id.clone());
         job.message = Some(format!(
@@ -132,6 +149,16 @@ pub fn sync_all(ctx: &JobContext, drive_id: &str) -> AppResult<()> {
             }
             Err(e) => errors.push(format!("{}: {}", model.display_name, e)),
         }
+    }
+
+    if ctx.cancelled.load(Ordering::Relaxed) {
+        let msg = if completed > 0 {
+            format!("Cancelled after syncing {completed} models")
+        } else {
+            "Sync cancelled".to_string()
+        };
+        ctx.finish_job(&mut job, false, &msg)?;
+        return Err(AppError::msg("Job cancelled"));
     }
 
     let msg = if errors.is_empty() {

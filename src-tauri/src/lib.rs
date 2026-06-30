@@ -136,11 +136,28 @@ where
 
     std::thread::spawn(move || {
         let ctx = JobContext {
-            db,
-            app,
+            db: db.clone(),
+            app: app.clone(),
             cancelled: flag,
         };
-        let _ = work(ctx);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| work(ctx)));
+        match &result {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => tracing::warn!("Job {} ended with error: {}", job_id, e),
+            Err(_) => tracing::error!("Job {} panicked", job_id),
+        }
+
+        let reconcile_ctx = JobContext {
+            db: db.clone(),
+            app,
+            cancelled: Arc::new(AtomicBool::new(false)),
+        };
+        let orphan_msg = match &result {
+            Err(_) => "Job crashed unexpectedly",
+            _ => "Job stopped unexpectedly",
+        };
+        let _ = reconcile_ctx.reconcile_orphan_job(&job_id, orphan_msg);
+
         cancel_flags.lock().unwrap().remove(&job_id);
     });
 }
@@ -153,9 +170,12 @@ fn start_backup(
     drive_id: String,
 ) -> AppResult<String> {
     let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
     let mid = model_id.clone();
     let did = drive_id.clone();
-    spawn_job(&state, app, job_id.clone(), move |ctx| backup::run(&ctx, &mid, &did));
+    spawn_job(&state, app, job_id.clone(), move |ctx| {
+        backup::run(&ctx, &jid, &mid, &did)
+    });
     Ok(job_id)
 }
 
@@ -167,9 +187,12 @@ fn start_sync(
     drive_id: String,
 ) -> AppResult<String> {
     let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
     let mid = model_id.clone();
     let did = drive_id.clone();
-    spawn_job(&state, app, job_id.clone(), move |ctx| sync::run(&ctx, &mid, &did));
+    spawn_job(&state, app, job_id.clone(), move |ctx| {
+        sync::run(&ctx, &jid, &mid, &did)
+    });
     Ok(job_id)
 }
 
@@ -182,10 +205,11 @@ fn start_restore(
     target_path: Option<String>,
 ) -> AppResult<String> {
     let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
     let mid = model_id.clone();
     let did = drive_id.clone();
     spawn_job(&state, app, job_id.clone(), move |ctx| {
-        restore::run(&ctx, &mid, &did, target_path)
+        restore::run(&ctx, &jid, &mid, &did, target_path)
     });
     Ok(job_id)
 }
@@ -199,9 +223,10 @@ fn start_delete(
     scope: DeleteScope,
 ) -> AppResult<String> {
     let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
     let mid = model_id.clone();
     spawn_job(&state, app, job_id.clone(), move |ctx| {
-        delete::run(&ctx, &mid, drive_id, scope)
+        delete::run(&ctx, &jid, &mid, drive_id, scope)
     });
     Ok(job_id)
 }
@@ -214,9 +239,12 @@ fn start_offload(
     drive_id: String,
 ) -> AppResult<String> {
     let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
     let mid = model_id.clone();
     let did = drive_id.clone();
-    spawn_job(&state, app, job_id.clone(), move |ctx| offload::run(&ctx, &mid, &did));
+    spawn_job(&state, app, job_id.clone(), move |ctx| {
+        offload::run(&ctx, &jid, &mid, &did)
+    });
     Ok(job_id)
 }
 
@@ -228,10 +256,11 @@ fn reverse_offload(
     drive_id: String,
 ) -> AppResult<String> {
     let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
     let mid = model_id.clone();
     let did = drive_id.clone();
     spawn_job(&state, app, job_id.clone(), move |ctx| {
-        offload::reverse_offload(&ctx, &mid, &did)
+        offload::reverse_offload(&ctx, &jid, &mid, &did)
     });
     Ok(job_id)
 }
@@ -243,8 +272,11 @@ fn start_backup_all(
     drive_id: String,
 ) -> AppResult<String> {
     let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
     let did = drive_id.clone();
-    spawn_job(&state, app, job_id.clone(), move |ctx| batch::backup_all(&ctx, &did));
+    spawn_job(&state, app, job_id.clone(), move |ctx| {
+        batch::backup_all(&ctx, &jid, &did)
+    });
     Ok(job_id)
 }
 
@@ -255,15 +287,34 @@ fn start_sync_all(
     drive_id: String,
 ) -> AppResult<String> {
     let job_id = Uuid::new_v4().to_string();
+    let jid = job_id.clone();
     let did = drive_id.clone();
-    spawn_job(&state, app, job_id.clone(), move |ctx| batch::sync_all(&ctx, &did));
+    spawn_job(&state, app, job_id.clone(), move |ctx| {
+        batch::sync_all(&ctx, &jid, &did)
+    });
     Ok(job_id)
 }
 
 #[tauri::command]
-fn cancel_job(state: State<AppState>, job_id: String) -> AppResult<()> {
+fn cancel_job(state: State<AppState>, app: AppHandle, job_id: String) -> AppResult<()> {
     if let Some(flag) = state.cancel_flags.lock().unwrap().get(&job_id) {
         flag.store(true, Ordering::Relaxed);
+        return Ok(());
+    }
+
+    // No active worker (orphaned after restart/crash) — force-finish in DB.
+    if state
+        .db
+        .force_finish_job(&job_id, "cancelled", "Cancelled by user")?
+    {
+        if let Some(job) = state.db.get_job(&job_id)? {
+            let ctx = JobContext {
+                db: state.db.clone(),
+                app,
+                cancelled: Arc::new(AtomicBool::new(false)),
+            };
+            ctx.emit_progress(&job, "cancelled");
+        }
     }
     Ok(())
 }
@@ -286,6 +337,12 @@ pub fn run() {
                 .app_data_dir()
                 .map_err(|e| AppError::msg(e.to_string()))?;
             let db = Database::open(&app_data)?;
+            let stale = db.fail_stale_running_jobs(
+                "Interrupted — app was closed or the job was orphaned",
+            )?;
+            if stale > 0 {
+                tracing::info!("Marked {stale} stale running job(s) as failed on startup");
+            }
             app.manage(AppState {
                 db: Arc::new(db),
                 cancel_flags: Arc::new(Mutex::new(HashMap::new())),

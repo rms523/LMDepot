@@ -5,7 +5,7 @@ use crate::error::{AppError, AppResult};
 use std::path::Path;
 use uuid::Uuid;
 
-pub fn run(ctx: &JobContext, model_id: &str, drive_id: &str) -> AppResult<()> {
+pub fn run(ctx: &JobContext, job_id: &str, model_id: &str, drive_id: &str) -> AppResult<()> {
     let settings = ctx.db.get_settings()?;
     validate_apps_not_running(settings.warn_if_app_running)?;
 
@@ -21,7 +21,7 @@ pub fn run(ctx: &JobContext, model_id: &str, drive_id: &str) -> AppResult<()> {
     }
 
     let (_drive, backup_path) = prepare_backup_path(&ctx.db, drive_id, &model)?;
-    let mut job = new_job("offload", model_id, drive_id);
+    let mut job = new_job(job_id, "offload", model_id, drive_id);
     ctx.db.create_job(&job)?;
 
     let result = (|| -> AppResult<()> {
@@ -57,7 +57,7 @@ pub fn run(ctx: &JobContext, model_id: &str, drive_id: &str) -> AppResult<()> {
     Ok(())
 }
 
-pub fn reverse_offload(ctx: &JobContext, model_id: &str, drive_id: &str) -> AppResult<()> {
+pub fn reverse_offload(ctx: &JobContext, job_id: &str, model_id: &str, drive_id: &str) -> AppResult<()> {
     let settings = ctx.db.get_settings()?;
     validate_apps_not_running(settings.warn_if_app_running)?;
 
@@ -76,7 +76,7 @@ pub fn reverse_offload(ctx: &JobContext, model_id: &str, drive_id: &str) -> AppR
         .read_link()
         .map_err(|e| AppError::msg(e.to_string()))?;
 
-    let mut job = new_job("offload", model_id, drive_id);
+    let mut job = new_job(job_id, "offload", model_id, drive_id);
     job.message = Some("Reversing offload...".to_string());
     ctx.db.create_job(&job)?;
 

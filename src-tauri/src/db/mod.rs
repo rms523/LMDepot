@@ -414,6 +414,29 @@ impl Database {
         Ok(rows.next().transpose()?)
     }
 
+    /// Mark jobs left in `running` after a crash or force-quit as failed.
+    pub fn fail_stale_running_jobs(&self, message: &str) -> AppResult<u32> {
+        let conn = self.conn.lock().map_err(|e| AppError::msg(e.to_string()))?;
+        let now = Utc::now().to_rfc3339();
+        let updated = conn.execute(
+            "UPDATE jobs SET status = 'failed', message = ?1, finished_at = ?2 WHERE status = 'running'",
+            params![message, now],
+        )?;
+        Ok(updated as u32)
+    }
+
+    /// Force-finish a single job if it is still marked running (orphaned / no worker).
+    pub fn force_finish_job(&self, job_id: &str, status: &str, message: &str) -> AppResult<bool> {
+        let conn = self.conn.lock().map_err(|e| AppError::msg(e.to_string()))?;
+        let now = Utc::now().to_rfc3339();
+        let updated = conn.execute(
+            "UPDATE jobs SET status = ?2, message = ?3, finished_at = ?4
+             WHERE id = ?1 AND status = 'running'",
+            params![job_id, status, message, now],
+        )?;
+        Ok(updated > 0)
+    }
+
     pub fn dashboard_stats(&self) -> AppResult<DashboardStats> {
         let conn = self.conn.lock().map_err(|e| AppError::msg(e.to_string()))?;
         let total_models: u32 =

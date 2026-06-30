@@ -6,7 +6,7 @@ import {
   listJobs,
 } from "../api/client";
 import { ProgressBar, StatusBadge } from "../components/Badges";
-import { getAllLiveProgress, subscribeJobProgress } from "../jobProgress";
+import { getAllLiveProgress, subscribeJobProgress, clearLiveProgress } from "../jobProgress";
 import type { JobRecord } from "../types";
 
 function useLiveProgress() {
@@ -60,6 +60,7 @@ export function JobsPage() {
   const handleCancel = async (jobId: string) => {
     try {
       await cancelJob(jobId);
+      clearLiveProgress(jobId);
       await load();
     } catch (e) {
       setError(String(e));

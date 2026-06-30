@@ -41,6 +41,12 @@ export function startJobProgressListener(): Promise<() => void> {
 
   return listen<JobProgressEvent>("job-progress", (event) => {
     live[event.payload.job_id] = event.payload;
+    if (["completed", "failed", "cancelled"].includes(event.payload.status)) {
+      // Drop terminal jobs from the live overlay after a short delay so the
+      // final state is visible once, then the DB row becomes the source of truth.
+      const jobId = event.payload.job_id;
+      window.setTimeout(() => clearLiveProgress(jobId), 1500);
+    }
     notify();
   });
 }

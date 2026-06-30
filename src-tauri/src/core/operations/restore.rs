@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 pub fn run(
     ctx: &JobContext,
+    job_id: &str,
     model_id: &str,
     drive_id: &str,
     target_path: Option<String>,
@@ -34,7 +35,7 @@ pub fn run(
     ensure_drive_mounted(&drive)?;
 
     let restore_target = target_path.unwrap_or_else(|| model_with.model.primary_path.clone());
-    let mut job = new_job("restore", model_id, drive_id);
+    let mut job = new_job(job_id, "restore", model_id, drive_id);
     ctx.db.create_job(&job)?;
 
     let model = model_with.model;
@@ -69,6 +70,7 @@ pub fn run(
 
 pub fn restore_offload(
     ctx: &JobContext,
+    job_id: &str,
     model_id: &str,
     drive_id: &str,
 ) -> AppResult<()> {
@@ -83,5 +85,11 @@ pub fn restore_offload(
         return Err(AppError::msg("Model is not offloaded (not a symlink)"));
     }
 
-    run(ctx, model_id, drive_id, Some(model.primary_path.clone()))
+    run(
+        ctx,
+        job_id,
+        model_id,
+        drive_id,
+        Some(model.primary_path.clone()),
+    )
 }

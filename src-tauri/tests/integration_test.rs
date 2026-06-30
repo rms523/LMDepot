@@ -45,6 +45,7 @@ fn backup_and_sync_roundtrip() {
         Path::new(&model.primary_path),
         &backup_path,
         &model.files,
+        || Ok(()),
         |_| {},
     )
     .unwrap();

@@ -9,7 +9,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
-use uuid::Uuid;
 
 pub mod backup;
 pub mod batch;
@@ -124,6 +123,28 @@ impl JobContext {
         }
         Ok(())
     }
+
+    /// Fail fast when the target backup drive is unplugged mid-job.
+    pub fn ensure_drive_available(&self, drive_id: Option<&str>) -> AppResult<()> {
+        let Some(drive_id) = drive_id else {
+            return Ok(());
+        };
+        let drive = self
+            .db
+            .get_backup_drive(drive_id)?
+            .ok_or_else(|| AppError::msg("Backup drive not found"))?;
+        ensure_drive_mounted(&drive)
+    }
+
+    pub fn reconcile_orphan_job(&self, job_id: &str, message: &str) -> AppResult<()> {
+        if let Some(mut job) = self.db.get_job(job_id)? {
+            if job.status == "running" {
+                job.message = Some(message.to_string());
+                self.finish_job(&mut job, false, message)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 pub fn write_manifest(
@@ -198,20 +219,31 @@ pub fn run_copy_with_job(
     let total = copy_engine::compute_total_bytes(files);
     ctx.update_job_progress(job, 0, total, None, Some("Copying files...".to_string()))?;
 
+    let drive_id = job.drive_id.clone();
     let mut last_emit = Instant::now();
     let emit_interval = Duration::from_millis(250);
 
-    let bytes = copy_engine::copy_model_files(source_root, dest_root, files, |p: CopyProgress| {
-        let _ = ctx.report_copy_progress(
-            job,
-            p.bytes_done,
-            p.bytes_total,
-            Some(p.current_file),
-            Some("Copying files...".to_string()),
-            &mut last_emit,
-            emit_interval,
-        );
-    })?;
+    let bytes = copy_engine::copy_model_files(
+        source_root,
+        dest_root,
+        files,
+        || {
+            ctx.check_cancelled()?;
+            ctx.ensure_drive_available(drive_id.as_deref())?;
+            Ok(())
+        },
+        |p: CopyProgress| {
+            let _ = ctx.report_copy_progress(
+                job,
+                p.bytes_done,
+                p.bytes_total,
+                Some(p.current_file),
+                Some("Copying files...".to_string()),
+                &mut last_emit,
+                emit_interval,
+            );
+        },
+    )?;
 
     // Ensure final state is persisted
     ctx.update_job_progress(
@@ -238,9 +270,9 @@ pub fn prepare_backup_path(
     Ok((drive, backup_path))
 }
 
-pub fn new_job(job_type: &str, model_id: &str, drive_id: &str) -> JobRecord {
+pub fn new_job(job_id: &str, job_type: &str, model_id: &str, drive_id: &str) -> JobRecord {
     JobRecord {
-        id: Uuid::new_v4().to_string(),
+        id: job_id.to_string(),
         job_type: job_type.to_string(),
         status: "running".to_string(),
         model_id: Some(model_id.to_string()),
