@@ -7,6 +7,7 @@ use chrono::Utc;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
@@ -45,18 +46,58 @@ impl JobContext {
         current_file: Option<String>,
         message: Option<String>,
     ) -> AppResult<()> {
+        Self::apply_progress(job, bytes_done, bytes_total, current_file, message);
+        self.db.update_job(job)?;
+        self.emit_progress(job, &job.status);
+        Ok(())
+    }
+
+    /// Emit UI events and persist to SQLite at most every `min_interval`.
+    pub fn report_copy_progress(
+        &self,
+        job: &mut JobRecord,
+        bytes_done: u64,
+        bytes_total: u64,
+        current_file: Option<String>,
+        message: Option<String>,
+        last_emit: &mut Instant,
+        min_interval: Duration,
+    ) -> AppResult<()> {
+        Self::apply_progress(
+            job,
+            bytes_done,
+            bytes_total,
+            current_file,
+            message.clone(),
+        );
+
+        let at_end = bytes_total > 0 && bytes_done >= bytes_total;
+        if at_end || last_emit.elapsed() >= min_interval {
+            self.emit_progress(job, &job.status);
+            self.db.update_job(job)?;
+            *last_emit = Instant::now();
+        }
+        Ok(())
+    }
+
+    fn apply_progress(
+        job: &mut JobRecord,
+        bytes_done: u64,
+        bytes_total: u64,
+        current_file: Option<String>,
+        message: Option<String>,
+    ) {
         job.bytes_done = bytes_done;
         job.bytes_total = bytes_total;
         job.current_file = current_file;
-        job.message = message;
+        if message.is_some() {
+            job.message = message;
+        }
         job.progress_pct = if bytes_total > 0 {
             (bytes_done as f64 / bytes_total as f64) * 100.0
         } else {
             0.0
         };
-        self.db.update_job(job)?;
-        self.emit_progress(job, &job.status);
-        Ok(())
     }
 
     pub fn finish_job(&self, job: &mut JobRecord, success: bool, message: &str) -> AppResult<()> {
@@ -155,15 +196,29 @@ pub fn run_copy_with_job(
     let total = copy_engine::compute_total_bytes(files);
     ctx.update_job_progress(job, 0, total, None, Some("Copying files...".to_string()))?;
 
+    let mut last_emit = Instant::now();
+    let emit_interval = Duration::from_millis(250);
+
     let bytes = copy_engine::copy_model_files(source_root, dest_root, files, |p: CopyProgress| {
-        let _ = ctx.update_job_progress(
+        let _ = ctx.report_copy_progress(
             job,
             p.bytes_done,
             p.bytes_total,
             Some(p.current_file),
             Some("Copying files...".to_string()),
+            &mut last_emit,
+            emit_interval,
         );
     })?;
+
+    // Ensure final state is persisted
+    ctx.update_job_progress(
+        job,
+        bytes,
+        total,
+        job.current_file.clone(),
+        Some("Copying files...".to_string()),
+    )?;
 
     Ok(bytes)
 }

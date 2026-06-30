@@ -5,7 +5,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
 
-const CHUNK_SIZE: usize = 1024 * 1024;
+const CHUNK_SIZE: usize = 10 * 1024 * 1024; // 10 MB read/write chunks
 
 pub struct CopyProgress {
     pub bytes_done: u64,
@@ -17,11 +17,14 @@ pub fn compute_total_bytes(files: &[ModelFileRecord]) -> u64 {
     files.iter().map(|f| f.size).sum()
 }
 
-pub fn copy_file_with_progress(
+pub fn copy_file_with_progress<F>(
     src: &Path,
     dst: &Path,
-    on_progress: Option<&dyn Fn(u64)>,
-) -> AppResult<u64> {
+    mut on_progress: Option<F>,
+) -> AppResult<u64>
+where
+    F: FnMut(u64),
+{
     if let Some(parent) = dst.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -34,7 +37,7 @@ pub fn copy_file_with_progress(
         if dst_meta.len() == src_size {
             if let (Ok(sm), Ok(dm)) = (src_meta.modified(), dst_meta.modified()) {
                 if sm <= dm {
-                    if let Some(cb) = on_progress {
+                    if let Some(ref mut cb) = on_progress {
                         cb(src_size);
                     }
                     return Ok(src_size);
@@ -59,7 +62,7 @@ pub fn copy_file_with_progress(
         }
         dst_file.write_all(&buffer[..n])?;
         copied += n as u64;
-        if let Some(cb) = on_progress {
+        if let Some(ref mut cb) = on_progress {
             cb(copied);
         }
     }
@@ -87,19 +90,28 @@ pub fn copy_model_files(
             )));
         }
 
+        let file_start = bytes_done;
+        let current_file = file.relative_path.clone();
+
         progress(CopyProgress {
             bytes_done,
             bytes_total: total,
-            current_file: file.relative_path.clone(),
+            current_file: current_file.clone(),
         });
 
-        let copied = copy_file_with_progress(&src, &dst, None)?;
+        let copied = copy_file_with_progress(&src, &dst, Some(|chunk| {
+            progress(CopyProgress {
+                bytes_done: file_start + chunk,
+                bytes_total: total,
+                current_file: current_file.clone(),
+            });
+        }))?;
         bytes_done += copied;
 
         progress(CopyProgress {
             bytes_done,
             bytes_total: total,
-            current_file: file.relative_path.clone(),
+            current_file,
         });
     }
 

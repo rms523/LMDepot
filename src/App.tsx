@@ -1,4 +1,6 @@
 import { NavLink, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { startJobProgressListener } from "./jobProgress";
 import { Dashboard } from "./pages/Dashboard";
 import { DrivesPage } from "./pages/Drives";
 import { JobsPage } from "./pages/Jobs";
@@ -7,6 +9,14 @@ import { SettingsPage } from "./pages/Settings";
 import "./App.css";
 
 function App() {
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    startJobProgressListener().then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, []);
+
   return (
     <div className="app">
       <aside className="sidebar">
