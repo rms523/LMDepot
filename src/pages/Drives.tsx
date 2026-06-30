@@ -157,7 +157,7 @@ export function DrivesPage() {
                 type="text"
                 value={rootPath}
                 onChange={(e) => setRootPath(e.target.value)}
-                placeholder="/Volumes/MyDrive/ModelBackup"
+                placeholder="/Volumes/MyDrive/LMDepot"
               />
               <button type="button" className="secondary" onClick={pickFolder}>
                 Browse

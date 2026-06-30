@@ -1,4 +1,4 @@
-# AGENTS.md — Model Backup
+# AGENTS.md — LMDepot
 
 Guidance for AI agents working in this repository.
 

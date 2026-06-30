@@ -1,12 +1,12 @@
-use model_backup_lib::adapters::huggingface_cache::HuggingFaceCacheAdapter;
-use model_backup_lib::adapters::lmstudio::LmStudioAdapter;
-use model_backup_lib::adapters::omlx::OmlxAdapter;
-use model_backup_lib::adapters::SourceAdapter;
-use model_backup_lib::core::copy_engine;
-use model_backup_lib::core::drive_monitor::backup_layout_path;
-use model_backup_lib::core::operations::{read_manifest, write_manifest};
-use model_backup_lib::db::Database;
-use model_backup_lib::types::ModelRecord;
+use lmdepot_lib::adapters::huggingface_cache::HuggingFaceCacheAdapter;
+use lmdepot_lib::adapters::lmstudio::LmStudioAdapter;
+use lmdepot_lib::adapters::omlx::OmlxAdapter;
+use lmdepot_lib::adapters::SourceAdapter;
+use lmdepot_lib::core::copy_engine;
+use lmdepot_lib::core::drive_monitor::backup_layout_path;
+use lmdepot_lib::core::operations::{read_manifest, write_manifest};
+use lmdepot_lib::db::Database;
+use lmdepot_lib::types::ModelRecord;
 use std::fs;
 use std::path::Path;
 use tempfile::TempDir;
@@ -15,7 +15,7 @@ fn sample_model(source_root: &Path, id: &str, source: &str) -> ModelRecord {
     let model_dir = source_root.join("sample-model");
     fs::create_dir_all(&model_dir).unwrap();
     fs::write(model_dir.join("weights.gguf"), vec![0u8; 1024]).unwrap();
-    let (total_bytes, file_count, files) = model_backup_lib::adapters::collect_files(&model_dir).unwrap();
+    let (total_bytes, file_count, files) = lmdepot_lib::adapters::collect_files(&model_dir).unwrap();
     ModelRecord {
         id: id.to_string(),
         display_name: "sample-model".to_string(),

@@ -20,7 +20,7 @@ pub struct Database {
 impl Database {
     pub fn open(app_data_dir: &Path) -> AppResult<Self> {
         std::fs::create_dir_all(app_data_dir)?;
-        let db_path = app_data_dir.join("model-backup.db");
+        let db_path = app_data_dir.join("lmdepot.db");
         let conn = Connection::open(db_path)?;
         conn.execute_batch(schema_embed::SCHEMA)?;
         conn.execute(

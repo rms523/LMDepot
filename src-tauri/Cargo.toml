@@ -1,12 +1,12 @@
 [package]
-name = "model-backup"
+name = "lmdepot"
 version = "0.1.0"
-description = "Cross-platform desktop tool for backing up AI models"
+description = "LMDepot — cross-platform desktop tool for backing up AI models"
 authors = ["rahul"]
 edition = "2021"
 
 [lib]
-name = "model_backup_lib"
+name = "lmdepot_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

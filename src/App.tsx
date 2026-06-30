@@ -21,8 +21,8 @@ function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <h1>Model Backup</h1>
-          <p>LM Studio · Unsloth</p>
+          <h1>LMDepot</h1>
+          <p>LM Studio · Hugging Face</p>
         </div>
         <nav>
           <NavLink to="/" end>

@@ -1,4 +1,4 @@
-# Model Backup
+# LMDepot
 
 Cross-platform desktop app for backing up AI models from **LM Studio** and the **Hugging Face Hub cache** to one or more external drives.
 
@@ -66,7 +66,7 @@ On **Backup Drives**, each registered drive has **Import**, **Restore all**, **B
 
 ## Restore on a new computer
 
-1. Install Model Backup and connect your external drive.
+1. Install LMDepot and connect your external drive.
 2. Open **Backup Drives** → **Add drive** → set the root path to the folder that contains `lmstudio/` and `hf/` (see layout below).
 3. Click **Import** on that drive — models appear on the **Models** tab with status *source missing*.
 4. Click **Restore all** (or restore individual models) to copy files into local LM Studio / Hugging Face folders.
@@ -77,7 +77,7 @@ Override local paths in **Settings** if your caches are not in the default locat
 ## Backup layout on external drives
 
 ```
-/Volumes/MyDrive/ModelBackup/
+/Volumes/MyDrive/LMDepot/
   lmstudio/
     author/Model-Name/
       model.manifest.json
