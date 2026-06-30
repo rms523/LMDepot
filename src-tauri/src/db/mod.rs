@@ -161,7 +161,11 @@ impl Database {
         for mut model in rows {
             model.files = self.get_model_files_inner(&conn, &model.id)?;
             let backups = self.get_backup_status_inner(&conn, &model.id)?;
-            result.push(ModelWithBackups { model, backups });
+            result.push(ModelWithBackups {
+                source_present: Self::source_path_present(&model.primary_path),
+                model,
+                backups,
+            });
         }
         Ok(result)
     }
@@ -176,9 +180,17 @@ impl Database {
             let mut model = row?;
             model.files = self.get_model_files_inner(&conn, &model.id)?;
             let backups = self.get_backup_status_inner(&conn, &model.id)?;
-            return Ok(Some(ModelWithBackups { model, backups }));
+            return Ok(Some(ModelWithBackups {
+                source_present: Self::source_path_present(&model.primary_path),
+                model,
+                backups,
+            }));
         }
         Ok(None)
+    }
+
+    fn source_path_present(path: &str) -> bool {
+        Path::new(path).exists()
     }
 
     fn get_model_files_inner(
@@ -229,7 +241,10 @@ impl Database {
     pub fn remove_stale_models(&self, current_ids: &[String]) -> AppResult<()> {
         let conn = self.conn.lock().map_err(|e| AppError::msg(e.to_string()))?;
         if current_ids.is_empty() {
-            conn.execute("DELETE FROM models", [])?;
+            conn.execute(
+                "DELETE FROM models WHERE id NOT IN (SELECT DISTINCT model_id FROM model_backups)",
+                [],
+            )?;
             return Ok(());
         }
         let placeholders = current_ids
@@ -238,7 +253,10 @@ impl Database {
             .map(|(i, _)| format!("?{}", i + 1))
             .collect::<Vec<_>>()
             .join(", ");
-        let sql = format!("DELETE FROM models WHERE id NOT IN ({placeholders})");
+        let sql = format!(
+            "DELETE FROM models WHERE id NOT IN ({placeholders})
+             AND id NOT IN (SELECT DISTINCT model_id FROM model_backups)"
+        );
         let params: Vec<&dyn rusqlite::ToSql> = current_ids
             .iter()
             .map(|id| id as &dyn rusqlite::ToSql)

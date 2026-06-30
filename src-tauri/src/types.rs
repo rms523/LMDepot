@@ -46,6 +46,8 @@ pub struct ModelWithBackups {
     #[serde(flatten)]
     pub model: ModelRecord,
     pub backups: Vec<ModelBackupStatus>,
+    /// False when the local model path no longer exists (e.g. after delete-from-source).
+    pub source_present: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   formatBytes,
   formatDate,
+  getModel,
   startBackup,
   startDelete,
   startOffload,
@@ -17,9 +18,11 @@ interface Props {
   model: ModelWithBackups;
   drives: BackupDrive[];
   onBack: () => void;
+  onModelUpdated?: (model: ModelWithBackups | null) => void;
 }
 
-export function ModelDetail({ model, drives, onBack }: Props) {
+export function ModelDetail({ model, drives, onBack, onModelUpdated }: Props) {
+  const [detail, setDetail] = useState(model);
   const [selectedDrive, setSelectedDrive] = useState(
     drives.find((d) => d.is_default)?.id ?? drives[0]?.id ?? ""
   );
@@ -28,7 +31,16 @@ export function ModelDetail({ model, drives, onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<DeleteScope | null>(null);
 
+  useEffect(() => {
+    setDetail(model);
+  }, [model]);
+
   const mountedDrives = drives.filter((d) => d.is_mounted);
+  const sourcePresent = detail.source_present;
+  const hasBackupOnDrive =
+    !!selectedDrive &&
+    detail.backups.some((b) => b.drive_id === selectedDrive && b.status === "backed_up");
+  const needsSource = !sourcePresent;
 
   const runAction = async (
     action: () => Promise<string>,
@@ -45,6 +57,15 @@ export function ModelDetail({ model, drives, onBack }: Props) {
     try {
       const jobId = await action();
       setMessage(`${label} job started (${jobId.slice(0, 8)}...). Check Jobs tab for progress.`);
+      const refreshDetail = async () => {
+        const updated = await getModel(detail.id);
+        if (updated) {
+          setDetail(updated);
+          onModelUpdated?.(updated);
+        }
+      };
+      await refreshDetail();
+      window.setTimeout(refreshDetail, 2000);
     } catch (e) {
       setError(String(e));
       setMessage(null);
@@ -64,7 +85,7 @@ export function ModelDetail({ model, drives, onBack }: Props) {
     runAction(
       () =>
         startDelete(
-          model.id,
+          detail.id,
           showDeleteConfirm,
           needsDrive ? selectedDrive || undefined : undefined
         ),
@@ -80,23 +101,32 @@ export function ModelDetail({ model, drives, onBack }: Props) {
       </button>
 
       <div className="detail-header">
-        <h2>{model.display_name}</h2>
-        <SourceBadge source={model.source} />
+        <h2>{detail.display_name}</h2>
+        <SourceBadge source={detail.source} />
+        {!sourcePresent && <StatusBadge status="source_missing" />}
       </div>
+
+      {!sourcePresent && (
+        <div className="notice-banner">
+          Local copy removed. Files remain on your backup drive — use{" "}
+          <strong>Restore from backup</strong> to copy them back to{" "}
+          <code>{detail.primary_path}</code>.
+        </div>
+      )}
 
       <div className="detail-meta">
         <div>
-          <strong>Path:</strong> <code>{model.primary_path}</code>
+          <strong>Path:</strong> <code>{detail.primary_path}</code>
         </div>
         <div>
-          <strong>Size:</strong> {formatBytes(model.total_bytes)} ({model.file_count} files)
+          <strong>Size:</strong> {formatBytes(detail.total_bytes)} ({detail.file_count} files)
         </div>
         <div>
-          <strong>Last scanned:</strong> {formatDate(model.scanned_at)}
+          <strong>Last scanned:</strong> {formatDate(detail.scanned_at)}
         </div>
-        {model.revision && (
+        {detail.revision && (
           <div>
-            <strong>Revision:</strong> {model.revision}
+            <strong>Revision:</strong> {detail.revision}
           </div>
         )}
       </div>
@@ -120,10 +150,10 @@ export function ModelDetail({ model, drives, onBack }: Props) {
         )}
 
         <div className="backup-status-list">
-          {model.backups.length === 0 ? (
+          {detail.backups.length === 0 ? (
             <StatusBadge status="not_backed_up" />
           ) : (
-            model.backups.map((b) => (
+            detail.backups.map((b) => (
               <div key={b.drive_id} className="backup-row">
                 <strong>{b.drive_label}</strong> — <StatusBadge status={b.status} />
                 {b.last_synced_at && (
@@ -139,21 +169,21 @@ export function ModelDetail({ model, drives, onBack }: Props) {
         <h3>Actions</h3>
         <div className="action-grid">
           <button
-            disabled={busy || !selectedDrive}
-            onClick={() => runAction(() => startBackup(model.id, selectedDrive), "Backup")}
+            disabled={busy || !selectedDrive || needsSource}
+            onClick={() => runAction(() => startBackup(detail.id, selectedDrive), "Backup")}
           >
             Backup
           </button>
           <button
-            disabled={busy || !selectedDrive}
-            onClick={() => runAction(() => startSync(model.id, selectedDrive), "Sync")}
+            disabled={busy || !selectedDrive || needsSource}
+            onClick={() => runAction(() => startSync(detail.id, selectedDrive), "Sync")}
           >
             Sync to backup
           </button>
           <button
-            disabled={busy || !selectedDrive}
+            disabled={busy || !selectedDrive || !hasBackupOnDrive}
             onClick={() =>
-              runAction(() => startRestore(model.id, selectedDrive), "Restore")
+              runAction(() => startRestore(detail.id, selectedDrive), "Restore")
             }
           >
             Restore from backup
@@ -161,15 +191,15 @@ export function ModelDetail({ model, drives, onBack }: Props) {
           <ActionButtonWithHint
             label="Offload (move + symlink)"
             hint="Copies this model to the backup drive, deletes the local files, and leaves a symlink at the original path so your provider app still finds the model."
-            disabled={busy || !selectedDrive}
-            onClick={() => runAction(() => startOffload(model.id, selectedDrive), "Offload")}
+            disabled={busy || !selectedDrive || needsSource}
+            onClick={() => runAction(() => startOffload(detail.id, selectedDrive), "Offload")}
           />
           <ActionButtonWithHint
             label="Reverse offload"
             hint="Removes the symlink and moves the model files back from the backup drive to the original local folder."
-            disabled={busy || !selectedDrive}
+            disabled={busy || !selectedDrive || needsSource}
             onClick={() =>
-              runAction(() => reverseOffload(model.id, selectedDrive), "Reverse offload")
+              runAction(() => reverseOffload(detail.id, selectedDrive), "Reverse offload")
             }
           />
         </div>
@@ -180,7 +210,7 @@ export function ModelDetail({ model, drives, onBack }: Props) {
         <div className="action-grid">
           <button
             className="danger"
-            disabled={busy}
+            disabled={busy || needsSource}
             onClick={() => confirmDelete("source_only")}
           >
             Delete from source
@@ -207,8 +237,14 @@ export function ModelDetail({ model, drives, onBack }: Props) {
           <div className="modal">
             <h3>Confirm delete</h3>
             <p>
-              Delete <strong>{model.display_name}</strong> (
+              Delete <strong>{detail.display_name}</strong> (
               {showDeleteConfirm.replace("_", " ")})? This cannot be undone.
+              {showDeleteConfirm === "source_only" && detail.backups.length > 0 && (
+                <>
+                  {" "}
+                  The model will stay in this list so you can restore it from backup.
+                </>
+              )}
             </p>
             <div className="modal-actions">
               <button onClick={() => setShowDeleteConfirm(null)}>Cancel</button>
@@ -224,16 +260,16 @@ export function ModelDetail({ model, drives, onBack }: Props) {
       {error && <div className="error">{error}</div>}
 
       <section className="section">
-        <h3>Files ({model.files.length})</h3>
+        <h3>Files ({detail.files.length})</h3>
         <div className="file-list">
-          {model.files.slice(0, 50).map((f) => (
+          {detail.files.slice(0, 50).map((f) => (
             <div key={f.relative_path} className="file-row">
               <span>{f.relative_path}</span>
               <SizeBadge bytes={f.size} />
             </div>
           ))}
-          {model.files.length > 50 && (
-            <div className="muted">...and {model.files.length - 50} more files</div>
+          {detail.files.length > 50 && (
+            <div className="muted">...and {detail.files.length - 50} more files</div>
           )}
         </div>
       </section>

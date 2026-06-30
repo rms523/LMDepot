@@ -181,6 +181,11 @@ export function ModelsPage() {
           setSelected(null);
           load();
         }}
+        onModelUpdated={(updated) => {
+          if (!updated) return;
+          setSelected(updated);
+          setModels((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+        }}
       />
     );
   }
@@ -280,6 +285,13 @@ export function ModelsPage() {
                         <StatusBadge status="in_progress" />
                         {progressLabel && (
                           <span className="muted progress-hint"> {progressLabel}</span>
+                        )}
+                      </div>
+                    ) : !m.source_present ? (
+                      <div className="backup-line">
+                        <StatusBadge status="source_missing" />
+                        {m.backups.length > 0 && (
+                          <span className="muted"> — restore from backup</span>
                         )}
                       </div>
                     ) : m.backups.length === 0 ? (

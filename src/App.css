@@ -539,9 +539,24 @@ button.secondary:hover:not(:disabled) {
   opacity: 1;
 }
 
+.notice-banner {
+  background: rgba(90, 74, 42, 0.35);
+  border: 1px solid #5a4a2a;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .danger-section {
   border-top: 1px solid var(--border);
   padding-top: 1rem;
+}
+
+.badge.status-source_missing {
+  background: #5a4a2a;
+  color: #f0d080;
 }
 
 /* Settings page */

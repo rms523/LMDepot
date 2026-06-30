@@ -45,6 +45,8 @@ export interface ModelWithBackups {
   revision?: string | null;
   files: ModelFileRecord[];
   backups: ModelBackupStatus[];
+  /** False when the local model folder no longer exists (e.g. after delete-from-source). */
+  source_present: boolean;
 }
 
 export interface DashboardStats {

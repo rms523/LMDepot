@@ -19,7 +19,7 @@ pub fn run(
     }
     ctx.db.create_job(&job)?;
 
-    let result = (|| -> AppResult<()> {
+    let result = (|| -> AppResult<&'static str> {
         let settings = ctx.db.get_settings()?;
         validate_apps_not_running(settings.warn_if_app_running)?;
 
@@ -81,19 +81,23 @@ pub fn run(
                 }
                 ctx.db.delete_model_backup(model_id, &drive_id)?;
                 ctx.db.delete_model(model_id)?;
-                return Ok(());
+                return Ok("Delete completed");
             }
         }
 
         if matches!(scope, DeleteScope::SourceOnly) {
-            ctx.db.delete_model(model_id)?;
+            if model_with.backups.is_empty() {
+                ctx.db.delete_model(model_id)?;
+                return Ok("Source deleted");
+            }
+            return Ok("Source deleted; backup retained — use Restore to recover");
         }
 
-        Ok(())
+        Ok("Delete completed")
     })();
 
     match result {
-        Ok(()) => ctx.finish_job(&mut job, true, "Delete completed")?,
+        Ok(msg) => ctx.finish_job(&mut job, true, msg)?,
         Err(e) => {
             let msg = e.to_string();
             ctx.finish_job(&mut job, false, &msg)?;
